@@ -5,6 +5,7 @@ src=$(wildcard *.c)
 obj=$(src:.c=.o)
 headers=$(wildcard *.h)
 BIN=ifj20
+PACK=xkabel09
 
 all: $(BIN)
 $(BIN): $(obj) $(headers)
@@ -13,10 +14,15 @@ $(BIN): $(obj) $(headers)
 %.o: %.c
 	$(CC) -c $(CFLAGS) -o $@ $^
 
-.PHONY: clean run
+.PHONY: clean run pack
 
 clean:
-	rm -rf $(obj) $(BIN)
+	rm -rf $(obj) $(BIN) $(PACK).tgz
 
 run: all
 	./$(BIN)
+
+$(PACK).tgz: $(src) $(headers)
+	tar -czvf $@ $^ Makefile rozdeleni
+
+pack: clean $(PACK).tgz
