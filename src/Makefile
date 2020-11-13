@@ -17,12 +17,12 @@ $(BIN): $(obj) $(headers)
 .PHONY: clean run pack
 
 clean:
-	rm -rf $(obj) $(BIN) $(PACK).tgz
+	rm -rf $(obj) $(BIN) ../$(PACK).tgz
 
 run: all
 	./$(BIN)
 
-$(PACK).tgz: $(src) $(headers)
-	tar -czvf $@ $^ Makefile rozdeleni
+../$(PACK).tgz: $(src) $(headers)
+	tar -czvf $@ $^ Makefile ../rozdeleni
 
-pack: clean $(PACK).tgz
+pack: clean ../$(PACK).tgz
