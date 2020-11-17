@@ -149,105 +149,90 @@ int get_next_token(token *tok)
         switch (state)
         {
             case SCANNER_START:
-                if (c == '\n')
+                switch (c)
                 {
-                    state = SCANNER_EOL;
-                }
-                else if (isspace(c))
-                {
-                    break;
-                }
-                else if (c == EOF)
-                {
-                    tok->type = TOKEN_EOF;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '/')
-                {
-                    state = SCANNER_COMMENT_OR_DIV;
-                }
-                else if (c == ':')
-                {
-                    state = SCANNER_COLON;
-                }
-                else if (c == '=')
-                {
-                    state = SCANNER_EQUAL_OR_REASSIGN;
-                }
-                else if (c == '!')
-                {
-                    state = SCANNER_NOT_EQUAL;
-                }
-                else if (c == '<')
-                {
-                    state = SCANNER_LESS_THAN;
-                }
-                else if (c == '>')
-                {
-                    state = SCANNER_GREATER_THAN;
-                }
-                else if (c == '+')
-                {
-                    tok->type = TOKEN_ADD;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '-')
-                {
-                    tok->type = TOKEN_SUB;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '*')
-                {
-                    tok->type = TOKEN_MUL;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '(')
-                {
-                    tok->type = TOKEN_PAR_OPEN;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == ')')
-                {
-                    tok->type = TOKEN_PAR_CLOSE;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '{')
-                {
-                    tok->type = TOKEN_CURLY_OPEN;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == '}')
-                {
-                    tok->type = TOKEN_CURLY_CLOSE;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == ';')
-                {
-                    tok->type = TOKEN_SEMICOLON;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (c == ',')
-                {
-                    tok->type = TOKEN_COMMA;
-                    return cleanup(&str, SCANNER_SUCCESS);
-                }
-                else if (isalpha(c) || c == '_')
-                {
-                    if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
-                    state = SCANNER_KEYWORD_OR_IDENTIFIER;
-                }
-                else if (isdigit(c))
-                {
-                    if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
-                    state = SCANNER_INT;
-                }
-                else if (c == '"')
-                {
-                    state = SCANNER_STRING;
-                }
-                else
-                {
-                    return cleanup(&str, ERR_LEX_STRUCTURE);
+                    case '\n':
+                        state = SCANNER_EOL;
+                        break;
+                    // rest of isspace(c)
+                    case ' ':
+                    case '\t':
+                    case '\v':
+                    case '\f':
+                    case '\r':
+                        break;
+                    case EOF:
+                        tok->type = TOKEN_EOF;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '/':
+                        state = SCANNER_COMMENT_OR_DIV;
+                        break;
+                    case ':':
+                        state = SCANNER_COLON;
+                        break;
+                    case '=':
+                        state = SCANNER_EQUAL_OR_REASSIGN;
+                        break;
+                    case '!':
+                        state = SCANNER_NOT_EQUAL;
+                        break;
+                    case '<':
+                        state = SCANNER_LESS_THAN;
+                        break;
+                    case '>':
+                        state = SCANNER_GREATER_THAN;
+                        break;
+                    case '+':
+                        tok->type = TOKEN_ADD;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '-':
+                        tok->type = TOKEN_SUB;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '*':
+                        tok->type = TOKEN_MUL;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '(':
+                        tok->type = TOKEN_PAR_OPEN;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case ')':
+                        tok->type = TOKEN_PAR_CLOSE;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '{':
+                        tok->type = TOKEN_CURLY_OPEN;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case '}':
+                        tok->type = TOKEN_CURLY_CLOSE;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case ';':
+                        tok->type = TOKEN_SEMICOLON;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    case ',':
+                        tok->type = TOKEN_COMMA;
+                        return cleanup(&str, SCANNER_SUCCESS);
+                    // isalpha(c) || c == '_'
+                    case 'a':case 'b':case 'c':case 'd':case 'e':case 'f':
+                    case 'g':case 'h':case 'i':case 'j':case 'k':case 'l':
+                    case 'm':case 'n':case 'o':case 'p':case 'q':case 'r':
+                    case 's':case 't':case 'u':case 'v':case 'w':case 'x':
+                    case 'y':case 'z':case 'A':case 'B':case 'C':case 'D':
+                    case 'E':case 'F':case 'G':case 'H':case 'I':case 'J':
+                    case 'K':case 'L':case 'M':case 'N':case 'O':case 'P':
+                    case 'Q':case 'R':case 'S':case 'T':case 'U':case 'V':
+                    case 'W':case 'X':case 'Y':case 'Z':case '_':
+                        if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
+                        state = SCANNER_KEYWORD_OR_IDENTIFIER;
+                        break;
+                    // isdigit(c)
+                    case '0':case '1':case '2':case '3':case '4':case '5':
+                    case '6':case '7':case '8':case '9':
+                        if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
+                        state = SCANNER_INT;
+                        break;
+                    case '"':
+                        state = SCANNER_STRING;
+                        break;
+                    default:
+                        return cleanup(&str, ERR_LEX_STRUCTURE);
                 }
                 break;
 
