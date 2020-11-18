@@ -7,6 +7,7 @@
 #ifndef _SCANNER_H
 #define _SCANNER_H
 
+#include <stdio.h>
 #include "str.h"
 
 #define SCANNER_SUCCESS 0
@@ -126,6 +127,13 @@ typedef struct
     token_type type;
     token_attr attr;
 } token;
+
+/**
+ * Sets the scanner input file
+ *
+ * @param f Pointer to the input file
+ */
+void scanner_set_input(FILE *f);
 
 /**
  * @brief Sets the token attribute *str to a preallocated dynamic string pointer
