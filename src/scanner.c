@@ -9,13 +9,6 @@
 #include "error.h"
 #include "scanner.h"
 
-FILE *scanner_input;
-
-void scanner_set_input(FILE *f)
-{
-    scanner_input = f;
-}
-
 /**
  * @brief Frees dynamic string and returns given exit code
  *
@@ -32,7 +25,7 @@ static int cleanup(string *str, int code)
 }
 
 /**
- * @brief Frees dynamic string, ungets the char c to scanner_input and returns given exit code
+ * @brief Frees dynamic string, ungets the char c to stdin and returns given exit code
  *
  * This function serves purpose to cut down on lines when exiting get_next_token
  *
@@ -43,7 +36,7 @@ static int cleanup(string *str, int code)
  */
 static int cleanup_c(string *str, int code, char c)
 {
-    ungetc(c, scanner_input);
+    ungetc(c, stdin);
     str_free(str);
     return code;
 }
@@ -154,7 +147,7 @@ int get_next_token(token *tok)
 
     while(1)
     {
-        c = getc(scanner_input);
+        c = getchar();
         switch (state)
         {
             case SCANNER_START:
@@ -275,7 +268,7 @@ int get_next_token(token *tok)
                 if (c == '\n' || c == EOF)
                 {
                     state = SCANNER_START;
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                 }
                 break;
 
@@ -371,7 +364,7 @@ int get_next_token(token *tok)
                 }
                 else
                 {
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     // We "predict" the token is a keyword, if it is an identifier
                     // it will be set as TOKEN_IDENTIFIER in the
                     // keyword_or_identifier function
@@ -408,7 +401,7 @@ int get_next_token(token *tok)
                     {
                         return cleanup_c(&str, ERR_LEX_STRUCTURE, c);
                     }
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     return tok_attr_int(tok, &str, 10);
                 }
                 c_prev = c;
@@ -445,7 +438,7 @@ int get_next_token(token *tok)
                 else if (c == '_')
                 {
                     int_base = 8;
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     state = SCANNER_INT_BASE_NUM_FIRST;
                 }
                 else if (c == 'e' || c == 'E')
@@ -500,7 +493,7 @@ int get_next_token(token *tok)
                     {
                         return cleanup_c(&str, ERR_LEX_STRUCTURE, c);
                     }
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     return tok_attr_int(tok, &str, int_base);
                 }
                 c_prev = c;
@@ -541,7 +534,7 @@ int get_next_token(token *tok)
                     {
                         return cleanup_c(&str, ERR_LEX_STRUCTURE, c);
                     }
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     return token_attr_float64(tok, &str);
                 }
                 c_prev = c;
@@ -596,7 +589,7 @@ int get_next_token(token *tok)
                     {
                         return cleanup_c(&str, ERR_LEX_STRUCTURE, c);
                     }
-                    ungetc(c, scanner_input);
+                    ungetc(c, stdin);
                     return token_attr_float64(tok, &str);
                 }
                 c_prev = c;

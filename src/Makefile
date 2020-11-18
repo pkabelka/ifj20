@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c99 -Wall -Wextra -g -DDEBUG
+CFLAGS=-std=c99 -Wall -Wextra -Werror -pedantic
 LDFLAGS=
 src=$(wildcard *.c)
 obj=$(src:.c=.o)
@@ -18,6 +18,9 @@ $(BIN): $(obj) $(headers)
 
 clean:
 	rm -rf $(obj) $(BIN) ../$(PACK).tgz
+
+run: all
+	./$(BIN)
 
 ../$(PACK).tgz: $(src) $(headers)
 	tar -czvf $@ $^ Makefile ../rozdeleni
