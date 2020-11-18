@@ -139,6 +139,7 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
         }
         else
         {
+            free(s);
             return NULL;
         }
     }
