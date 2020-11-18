@@ -10,9 +10,6 @@
 #include <stdbool.h>
 #include "str.h"
 
-#define FALSE 0
-#define TRUE 1
-#define MAXSTACK 1024
 #define SYMTABLE_SUCCESS 0
 
 typedef struct stnode{
@@ -21,11 +18,40 @@ typedef struct stnode{
     struct stnode *rnode; // right subtree
 } *stnode_ptr;
 
- // TODO: change stack to a linked list
-typedef struct{
-    stnode_ptr a[MAXSTACK];
-    int top;
-} tStackP;
+/**
+ * @struct Stack element pointer
+ * 
+ * The stack is implemented as a singly linked list.
+ */
+typedef struct stack_el {
+    struct stack_el *next;
+    stnode_ptr data;
+} *stack_el_p;
+
+/**
+ * @brief Initializes stack to NULL
+ * @param s Pointer to stack element pointer
+ */
+void stack_init(stack_el_p *s);
+
+/**
+ * @brief Disposes all elements on the stack
+ * @param s Pointer to stack element pointer
+ */
+void stack_dispose(stack_el_p *s);
+
+/**
+ * @brief Pushes data on top of the stack
+ * @param data Pointer to stnode struct
+ * @return SYMTABLE_SUCCESS for correct allocation, ERR_INTERNAL otherwise
+ */
+int stack_push(stack_el_p *s, stnode_ptr data);
+
+/**
+ * @brief Removes the element from top of the stack
+ * @param data Pointer to stnode struct
+ */
+void stack_pop(stack_el_p *s);
 
 /**
  * @brief Initializes new symtable

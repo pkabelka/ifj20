@@ -8,50 +8,47 @@
 #include "symtable.h"
 #include "error.h"
 
-// TODO: change stack to a linked list
-void SInitP(tStackP *S)
+void stack_init(stack_el_p *s)
 {
-    S->top = 0;
+    *s = NULL;
 }
 
-void SPushP(tStackP *S, stnode_ptr ptr)
-/*   ------
-** Inserts value on top of stack
-**/
+int stack_push(stack_el_p *s, stnode_ptr data)
 {
-    /* Při implementaci v poli může dojít k přetečení zásobníku. */
-    if (S->top == MAXSTACK)
-        printf("Chyba: Došlo k přetečení zásobníku s ukazateli!\n");
-    else
+    stack_el_p tmp = malloc(sizeof(struct stack_el));
+    if (tmp == NULL)
     {
-        S->top++;
-        S->a[S->top] = ptr;
+        return ERR_INTERNAL;
     }
+
+    tmp->next = *s;
+    tmp->data = data;
+    *s = tmp;
+    return SYMTABLE_SUCCESS;
 }
 
-stnode_ptr STopPopP(tStackP *S)
-/*         --------
-** Removes value from top and return its value
-**/
+void stack_pop(stack_el_p *s)
 {
-    /* causes error if stack is empty. */
-    if (S->top == 0)
+    if (*s == NULL)
     {
-        printf("Chyba: Došlo k podtečení zásobníku s ukazateli!\n");
-        return (NULL);
+        return;
     }
-    else
-    {
-        return (S->a[S->top--]);
-    }
+
+    stack_el_p tmp = (*s)->next;
+    free(*s);
+    *s = tmp;
 }
 
-bool SEmptyP(tStackP *S)
-/*   -------
-** returns true if stack is empty
-**/
+void stack_dispose(stack_el_p *s)
 {
-    return (S->top == 0);
+    stack_el_p tmp = *s;
+    while (tmp != NULL)
+    {
+        stack_el_p next = tmp->next;
+        free(tmp);
+        tmp = next;
+    }
+    *s = NULL;
 }
 
 void symtable_init(stnode_ptr *root)
@@ -178,11 +175,11 @@ stnode_ptr symtable_search(stnode_ptr root, const char *key)
  * @brief Goes trhough left brand of subtree untill gets on the most left node
  * @param ptr node to walk through
 */
-static void Leftmost_Inorder(stnode_ptr ptr, tStackP *Stack)
+static void leftmost_inorder(stnode_ptr ptr, stack_el_p *stack)
 {
     while (ptr != NULL)
     {
-        SPushP(Stack, ptr);
+        stack_push(stack, ptr);
         ptr = ptr->lnode;
     }
 }
@@ -194,16 +191,17 @@ void symtable_dispose(stnode_ptr *root)
         return;
     }
 
-    // same passage as symtable_inorder
-    tStackP s;
-    SInitP(&s);
+    stack_el_p stack;
+    stack_init(&stack);
 
     stnode_ptr ptr = *root;
-    Leftmost_Inorder(ptr, &s);
-    while (!SEmptyP(&s))
+    leftmost_inorder(ptr, &stack);
+    while (stack != NULL)
     {
-        ptr = STopPopP(&s);
-        Leftmost_Inorder(ptr->rnode, &s);
+        ptr = stack->data;
+        stack_pop(&stack);
+        leftmost_inorder(ptr->rnode, &stack);
+        free(ptr->key);
         free(ptr);
         ptr = NULL;
     }
