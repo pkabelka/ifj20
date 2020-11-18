@@ -19,8 +19,9 @@ $(BIN): $(obj) $(headers)
 clean:
 	rm -rf $(obj) $(BIN) ../$(PACK).tgz
 
+# run with: make run ARGS="some arguments"
 run: all
-	./$(BIN)
+	./$(BIN) $(ARGS)
 
 ../$(PACK).tgz: $(src) $(headers)
 	tar -czvf $@ $^ Makefile ../rozdeleni
