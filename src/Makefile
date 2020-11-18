@@ -17,7 +17,13 @@ $(BIN): $(obj) $(headers)
 .PHONY: clean run pack
 
 clean:
+ifeq ($(OS), Windows_NT)
+	del /S *.o
+	del /S *.exe
+	del ..\$(PACK).tgz
+else
 	rm -rf $(obj) $(BIN) ../$(PACK).tgz
+endif
 
 # run with: make run ARGS="some arguments"
 run: all

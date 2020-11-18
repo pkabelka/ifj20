@@ -1,2 +1,4 @@
 ifj20
 *.o
+*.exe
+.vscode
