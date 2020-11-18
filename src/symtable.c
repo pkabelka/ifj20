@@ -60,15 +60,6 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
 {
     *error = false;
 
-    char *s = (char *)malloc(strlen(key) + sizeof(char));
-    if (s == NULL)
-    {
-        *error = true;
-        return NULL;
-    }
-
-    strcpy(s, key);
-
     if (*root == NULL)
     {
         stnode_ptr new = malloc(sizeof(struct stnode));
@@ -79,12 +70,14 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
         }
         new->lnode = NULL;
         new->rnode = NULL;
-        new->key = s;
+        new->key = (char *)malloc(strlen(key) + sizeof(char));
         if (new->key == NULL)
         {
             *error = true;
             return NULL;
         }
+        strcpy(new->key, key);
+
         *root = new;
         return new;
     }
@@ -92,7 +85,7 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
     stnode_ptr tmp = *root;
     while (tmp != NULL)
     {
-        int comp = strcmp(tmp->key, s);
+        int comp = strcmp(tmp->key, key);
         if (comp > 0) // New node will be inserted on the left side of current
         {
             if (tmp->lnode != NULL)
@@ -110,7 +103,14 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
 
                 new->lnode = NULL;
                 new->rnode = NULL;
-                new->key = s;
+                new->key = (char *)malloc(strlen(key) + sizeof(char));
+                if (new->key == NULL)
+                {
+                    *error = true;
+                    return NULL;
+                }
+                strcpy(new->key, key);
+
                 tmp->lnode = new; // new node is on the left
                 return new;
             }
@@ -132,14 +132,20 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
 
                 new->lnode = NULL;
                 new->rnode = NULL;
-                new->key = s;
+                new->key = (char *)malloc(strlen(key) + sizeof(char));
+                if (new->key == NULL)
+                {
+                    *error = true;
+                    return NULL;
+                }
+                strcpy(new->key, key);
+
                 tmp->rnode = new; // new node will be inserted on the right side of current
                 return new;
             }
         }
         else
         {
-            free(s);
             return NULL;
         }
     }
