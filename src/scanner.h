@@ -30,6 +30,9 @@ typedef enum
     SCANNER_GREATER_THAN, // '>' - "greater than" or "greater or equal"
     SCANNER_KEYWORD_OR_IDENTIFIER, // scanned characters could lead to a reserved keyword or an identifier
     SCANNER_INT, // number could be integer or float64
+    SCANNER_INT_BASE, // integer base expected
+    SCANNER_INT_BASE_NUM_FIRST, // fist integer expected
+    SCANNER_INT_BASE_NUM_OTHER, // processes other digits
     SCANNER_DECIMAL_POINT, // '.' - decimal point, expects another number and determines the number is a float64
     SCANNER_FLOAT64, // a number was entered after SCANNER_DECIMAL_POINT
     SCANNER_FLOAT64_EXPONENT, // 'e' or 'E' - expects an optional sign or a number
