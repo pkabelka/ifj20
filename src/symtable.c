@@ -214,3 +214,71 @@ void symtable_dispose(stnode_ptr *root)
     }
     *root = NULL;
 }
+
+static void replace_by_rightmost (stnode_ptr ptr_replaced, stnode_ptr *root)
+{
+    if (*root != NULL)
+    {
+        if ((*root)->rnode != NULL)
+        {
+            replace_by_rightmost(ptr_replaced, &(*root)->rnode);
+        }
+        else
+        {
+            free(ptr_replaced->key);
+            ptr_replaced->key = (*root)->key;
+            if ((*root)->lnode != NULL)
+            {
+                stnode_ptr old_root = *root;
+                *root = (*root)->lnode;
+                free(old_root);
+            }
+            else
+            {
+                free(*root);
+                *root = NULL;
+            }
+        }
+    }
+}
+
+void symtable_delete_node (stnode_ptr *root, const char *key)
+{
+    if (*root == NULL)
+    {
+        return;
+    }
+    int comp = strcmp(key, (*root)->key);
+    if (comp < 0)
+    {
+        symtable_delete_node(&(*root)->lnode, key);
+    }
+    else if (comp > 0)
+    {
+        symtable_delete_node(&(*root)->rnode, key);
+    }
+    else
+    {
+        if ((*root)->lnode == NULL && (*root)->rnode == NULL)
+        {
+            free(*root);
+            *root = NULL;
+        }
+        else if ((*root)->lnode != NULL && (*root)->rnode != NULL)
+        {
+            replace_by_rightmost(*root, &(*root)->lnode);
+        }
+        else if ((*root)->lnode == NULL)
+        {
+            stnode_ptr old_root = *root;
+            *root = (*root)->rnode;
+            free(old_root);
+        }
+        else if ((*root)->rnode == NULL)
+        {
+            stnode_ptr old_root = *root;
+            *root = (*root)->lnode;
+            free(old_root);
+        }
+    }
+}

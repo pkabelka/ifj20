@@ -78,3 +78,10 @@ stnode_ptr symtable_insert (stnode_ptr *root, const char *key, bool *error);
  * @param root tree to be disposed
  */
 void symtable_dispose(stnode_ptr *root);
+
+/**
+ * @brief Deletes a node in symtable
+ * @param root pointer to a tree root pointer
+ * @param key key of the node to delete
+ */
+void symtable_delete_node (stnode_ptr *root, const char *key);
