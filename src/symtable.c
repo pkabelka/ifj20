@@ -261,6 +261,7 @@ void symtable_delete_node (stnode_ptr *root, const char *key)
     {
         if ((*root)->lnode == NULL && (*root)->rnode == NULL)
         {
+            free((*root)->key);
             free(*root);
             *root = NULL;
         }
@@ -272,12 +273,14 @@ void symtable_delete_node (stnode_ptr *root, const char *key)
         {
             stnode_ptr old_root = *root;
             *root = (*root)->rnode;
+            free(old_root->key);
             free(old_root);
         }
         else if ((*root)->rnode == NULL)
         {
             stnode_ptr old_root = *root;
             *root = (*root)->lnode;
+            free(old_root->key);
             free(old_root);
         }
     }
