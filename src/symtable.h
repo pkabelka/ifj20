@@ -12,7 +12,10 @@
 
 #define SYMTABLE_SUCCESS 0
 
-typedef struct stnode{
+/**
+ * @struct Symbol table node
+ */
+typedef struct stnode {
     char *key; // node key
     struct stnode *lnode; // left subtree
     struct stnode *rnode; // right subtree
@@ -56,22 +59,22 @@ void stack_pop(stack_el_p *s);
 /**
  * @brief Initializes new symtable
  * @param root tree to be initialized
-*/
+ */
 void symtable_init(stnode_ptr *root);
 
 /**
  * @brief searches const char in given tree, returns matching node
-**/
-stnode_ptr symtable_search(stnode_ptr, const char *key);
+ */
+stnode_ptr symtable_search(stnode_ptr root, const char *key);
 
 /**
  * @brief Inserts in symtable new node with value of Content
  * @param c const char to be inserted as string
-*/
+ */
 stnode_ptr symtable_insert (stnode_ptr *root, const char *key, bool *error);
 
 /**
  * @brief Disposes all nodes in tree and frees memory
  * @param root tree to be disposed
-*/
+ */
 void symtable_dispose(stnode_ptr *root);
