@@ -482,7 +482,7 @@ int get_next_token(token *tok)
                 }
                 else if (c == '_')
                 {
-                if (!isdigit(c_prev) && !(int_base == 16 && ((c_prev >= 'a' && c_prev <= 'f') || (c_prev >= 'A' && c_prev <= 'F'))))
+                    if (!isdigit(c_prev) && !(int_base == 16 && ((c_prev >= 'a' && c_prev <= 'f') || (c_prev >= 'A' && c_prev <= 'F'))))
                     {
                         return cleanup(&str, ERR_LEX_STRUCTURE);
                     }
