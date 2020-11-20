@@ -4,6 +4,9 @@
  * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
  */
 
+#ifndef _STACK_H
+#define _STACK_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -52,3 +55,5 @@ bool stack_push(stack *s, void *data);
  * @brief Removes an element from top of the stack
  */
 void stack_pop(stack *s);
+
+#endif
