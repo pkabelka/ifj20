@@ -1,3 +1,9 @@
+/**
+ * @brief Generic stack interface
+ *
+ * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -25,13 +31,13 @@ typedef struct
 
 /**
  * @brief Initializes stack to NULL
- * @param s Pointer to stack element pointer
+ * @param s Stack pointer
  */
 void stack_init(stack *s);
 
 /**
  * @brief Disposes all elements on the stack
- * @param s Pointer to stack element pointer
+ * @param s Stack pointer
  */
 void stack_dispose(stack *s);
 

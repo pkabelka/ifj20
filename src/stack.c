@@ -1,3 +1,9 @@
+/**
+ * @brief Generic stack implementation
+ *
+ * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
+ */
+
 #include "stack.h"
 
 void stack_init(stack *s)
