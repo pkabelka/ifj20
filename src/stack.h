@@ -30,6 +30,7 @@ struct stack_el
 typedef struct
 {
     struct stack_el *top;
+    unsigned int count;
 } stack;
 
 /**

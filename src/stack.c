@@ -9,6 +9,7 @@
 void stack_init(stack *s)
 {
     s->top = NULL;
+    s->count = 0;
 }
 
 bool stack_push(stack *s, void *data)
@@ -22,6 +23,7 @@ bool stack_push(stack *s, void *data)
     tmp->next = s->top;
     tmp->data = data;
     s->top = tmp;
+    s->count += 1;
     return true;
 }
 
@@ -34,6 +36,7 @@ void stack_pop(stack *s)
 
     struct stack_el *tmp = s->top;
     s->top = tmp->next;
+    s->count -= 1;
     free(tmp);
 }
 
