@@ -30,6 +30,6 @@ run: all
 	./$(BIN) $(ARGS)
 
 ../$(PACK).tgz: $(src) $(headers)
-	tar -czvf $@ $^ Makefile ../rozdeleni
+	tar -czvf $@ $^ Makefile ../rozdeleni ../rozsireni
 
 pack: clean ../$(PACK).tgz
