@@ -5,18 +5,68 @@
  * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
  */
 
+#ifndef _SYMTABLE_H
+#define _SYMTABLE_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include "str.h"
+#include "stack.h"
 
 #define SYMTABLE_SUCCESS 0
+
+typedef enum
+{
+    NONE,
+    INT,
+    FLOAT64,
+    STRING,
+} data_type;
+
+/**
+ * @struct Symbol stack element
+ *
+ * The stack is implemented as a singly linked list
+ */
+typedef struct symstack_el
+{
+    struct symstack_el *next;
+    string *params;
+    bool defined;
+    data_type type;
+} *symstack_el_p;
+
+/**
+ * @brief Initializes symbol stack to NULL
+ * @param s Stack pointer
+ */
+void symstack_init(symstack_el_p *s);
+
+/**
+ * @brief Disposes all elements on the symbol stack
+ * @param s Stack pointer
+ */
+void symstack_dispose(symstack_el_p *s);
+
+/**
+ * @brief Pushes data on top of the symbol stack
+ * @param data Pointer to some data
+ * @return true if push completed successfully
+ */
+bool symstack_push(symstack_el_p *s, bool defined, data_type type);
+
+/**
+ * @brief Removes an element from top of the symbol stack
+ */
+void symstack_pop(symstack_el_p *s);
 
 /**
  * @struct Symbol table node
  */
 typedef struct stnode {
     char *key; // node key
+    symstack_el_p data;
     struct stnode *lnode; // left subtree
     struct stnode *rnode; // right subtree
 } *stnode_ptr;
@@ -50,3 +100,5 @@ void symtable_dispose(stnode_ptr *root);
  * @param key key of the node to delete
  */
 void symtable_delete_node (stnode_ptr *root, const char *key);
+
+#endif

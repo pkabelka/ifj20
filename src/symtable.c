@@ -9,6 +9,51 @@
 #include "error.h"
 #include "stack.h"
 
+void symstack_init(symstack_el_p *s)
+{
+    *s = NULL;
+}
+
+bool symstack_push(symstack_el_p *s, bool defined, data_type type)
+{
+    symstack_el_p tmp = malloc(sizeof(struct stack_el));
+    if (tmp == NULL)
+    {
+        return false;
+    }
+
+    tmp->next = *s;
+    tmp->defined = defined;
+    tmp->type = type;
+    tmp->params = malloc(sizeof(string));
+    str_init(tmp->params);
+    *s = tmp;
+    return true;
+}
+
+void symstack_pop(symstack_el_p *s)
+{
+    if (*s == NULL)
+    {
+        return;
+    }
+
+    symstack_el_p tmp = (*s)->next;
+    str_free((*s)->params);
+    free((*s)->params);
+    free(*s);
+    *s = tmp;
+}
+
+void symstack_dispose(symstack_el_p *s)
+{
+    while (*s != NULL)
+    {
+        symstack_pop(s);
+    }
+    *s = NULL;
+}
+
 void symtable_init(stnode_ptr *root)
 {
     *root = NULL;
@@ -35,6 +80,8 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
             return NULL;
         }
         strcpy(new->key, key);
+
+        symstack_push(&new->data, false, NONE);
 
         *root = new;
         return new;
@@ -69,6 +116,8 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
+                symstack_push(&new->data, false, NONE);
+
                 tmp->lnode = new; // new node is on the left
                 return new;
             }
@@ -98,12 +147,15 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
+                symstack_push(&new->data, false, NONE);
+
                 tmp->rnode = new; // new node will be inserted on the right side of current
                 return new;
             }
         }
         else
         {
+            symstack_push(&tmp->data, false, NONE);
             return NULL;
         }
     }
@@ -167,9 +219,9 @@ void symtable_dispose(stnode_ptr *root)
         ptr = st.top->data;
         stack_pop(&st);
         leftmost_inorder(ptr->rnode, &st);
+        symstack_dispose(&ptr->data);
         free(ptr->key);
         free(ptr);
-        ptr = NULL;
     }
     *root = NULL;
 }
