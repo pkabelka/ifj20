@@ -120,15 +120,16 @@ stnode_ptr symtable_search(stnode_ptr root, const char *key)
     stnode_ptr tmp = root;
     while (tmp != NULL)
     {
-        if (strcmp(key, tmp->key) == 0)
+        int comp = strcmp(key, tmp->key);
+        if (comp == 0)
         {
             return tmp;
         }
-        else if (strcmp(key, tmp->key) < 0)
+        else if (comp < 0)
         {
             tmp = tmp->lnode;
         }
-        else if (strcmp(key, tmp->key) > 0)
+        else if (comp > 0)
         {
             tmp = tmp->rnode;
         }
