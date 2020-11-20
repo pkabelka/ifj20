@@ -51,7 +51,6 @@ void symstack_dispose(symstack_el_p *s)
     {
         symstack_pop(s);
     }
-    *s = NULL;
 }
 
 void symtable_init(stnode_ptr *root)
