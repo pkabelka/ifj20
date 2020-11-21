@@ -65,7 +65,7 @@ int parse(data *data)
 
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_IDENTIFIER && !str_cmp_const(TKN.attr.str, "main"))
-		return 10;
+		return ERR_SEMANTIC_OTHER;
 
 	//parsing all functions
 	while (TKN.type != TOKEN_EOF)
@@ -269,6 +269,8 @@ static int end_of_expression(data *data)
 			break;
 		//end of expression
 		case TOKEN_COMMA: case TOKEN_EOL: case TOKEN_CURLY_OPEN: case TOKEN_SEMICOLON:
+			if (*(int*)data->stack.top->data != 0) //missing )
+				return ERR_SYNTAX;
 			return 0;
 			break;
 
@@ -284,7 +286,11 @@ static int func_calling(data *data)
 	stack_push(&data->stack, &zero);
 	APPLY_RULE(expression)
 	if (TKN.type == TOKEN_COMMA)
-		return func_calling(data);
+	{
+		int res = func_calling(data);
+		stack_pop(&data->stack);
+		return res;
+	}
 	else if (TKN.type == TOKEN_PAR_CLOSE)
 	{
 		stack_pop(&data->stack);
