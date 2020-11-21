@@ -80,6 +80,7 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
         }
         strcpy(new->key, key);
 
+        symstack_init(&new->data);
         symstack_push(&new->data, false, NONE);
 
         *root = new;
@@ -115,6 +116,7 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
+                symstack_init(&new->data);
                 symstack_push(&new->data, false, NONE);
 
                 tmp->lnode = new; // new node is on the left
@@ -146,6 +148,7 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
+                symstack_init(&new->data);
                 symstack_push(&new->data, false, NONE);
 
                 tmp->rnode = new; // new node will be inserted on the right side of current
