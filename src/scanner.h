@@ -125,6 +125,7 @@ typedef struct
 {
     token_type type;
     token_attr attr;
+    int line;
 } token;
 
 /**

@@ -127,6 +127,8 @@ void set_token_string_attr(string *s)
     token_string_attr = s;
 }
 
+static int line = 1;
+
 int get_next_token(token *tok)
 {
     string str;
@@ -144,6 +146,7 @@ int get_next_token(token *tok)
     int c_prev = 0;
     char hex_escape_str[2];
     unsigned int int_base = 10;
+    tok->line = line;
 
     while(1)
     {
@@ -244,9 +247,24 @@ int get_next_token(token *tok)
                 break;
 
             case SCANNER_EOL:
-                if (isspace(c)) { break; }
-                tok->type = TOKEN_EOL;
-                return cleanup_c(&str, SCANNER_SUCCESS, c);
+                switch (c)
+                {
+                    case '\n':
+                        line += 1;
+                        break;
+                    // rest of isspace(c)
+                    case ' ':
+                    case '\t':
+                    case '\v':
+                    case '\f':
+                    case '\r':
+                        break;
+                    default:
+                        tok->type = TOKEN_EOL;
+                        line += 1;
+                        return cleanup_c(&str, SCANNER_SUCCESS, c);
+                }
+                break;
 
             case SCANNER_COMMENT_OR_DIV:
                 if (c == '/')
