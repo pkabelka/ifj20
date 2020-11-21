@@ -6,9 +6,6 @@
 
 int main()
 {
-    int result;
-    token_type type;
-
     string s;
     str_init(&s);
     set_token_string_attr(&s);
