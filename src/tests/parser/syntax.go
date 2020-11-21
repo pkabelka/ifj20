@@ -1,8 +1,12 @@
 //correct syntax
 package main
 
-//function header
+//function header and return
 func noargs() {
+}
+
+func empty() {
+	return
 }
 
 func arg(a int) {
@@ -12,20 +16,27 @@ func args(a int, b int, c string) {
 }
 
 func ret() (int) {
+	return 0
+}
+
+func without() int {
+	return 0
 }
 
 func rets() (int, string) {
+	return 10, "aloha"
 }
 
 func function(a int, b float64, c string, d int) (int, string) {
+	return 0, "hey"
 }
 
 func call(a int) (int) {
-
+	return 1
 }
 
 //expression, assignment, calling functions
-func expression() {
+func expression() (int, int) {
 	//basic expressions
 	identifier = "69"
 	a := 100
@@ -48,6 +59,8 @@ func expression() {
 	a = +-+-+-+-a
 
 	//TODO: use inter func in expression
+
+	return call(10) + call(((((1) + 2) -+-+ 4)) * 8), call(call(call((a))))
 }
 
 /* long comment 
@@ -57,7 +70,7 @@ func expression() {
 
 */
 
-//if statements
+//if statements and scopes
 func statements() {
 	if 0 {
 	} else {
@@ -85,6 +98,27 @@ func statements() {
 	} else {
 		if inputs() == "string" {
 		} else {
+		}
+	}
+}
+
+//for cycle
+func cycle() {
+	for i := 0; i < 10; i = i + 1 {
+	}
+
+	for ; inputs() != "esc" ; {
+	}
+
+	for a, b := 0, 0; a + b < 100; a, b = a + 1, b + 2 {
+	}
+
+	r := 100
+	for r = 0; r < 100; r = r + 1 {
+	}
+
+	for x := call(call(r)) - 1; x < 20; x = x + 1 {
+		for y := x; y < 20 * call(x); y = y + call(1) {
 		}
 	}
 }
