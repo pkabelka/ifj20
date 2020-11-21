@@ -287,7 +287,7 @@ static int scope(data *data)
 			{
 				APPLY_RULE(list_of_vars)
 				APPLY_RULE(assignment)
-				if (data->prev_token.type != TOKEN_EOL)
+				if (TKN.type != TOKEN_EOL)
 					return ERR_SYNTAX;
 			}
 			else if (TKN.type == TOKEN_PAR_OPEN) //function
@@ -297,7 +297,7 @@ static int scope(data *data)
 			else if (TKN.type == TOKEN_ASSIGN || TKN.type == TOKEN_REASSIGN) //assignment
 			{
 				APPLY_RULE(assignment)
-				if (data->prev_token.type != TOKEN_EOL)
+				if (TKN.type != TOKEN_EOL)
 					return ERR_SYNTAX;
 			}
 			else
@@ -305,7 +305,26 @@ static int scope(data *data)
 		}
 		else if (TKN.type == TOKEN_KEYWORD)
 		{
-			if (is_inter_func(TKN)) //calling inter functions
+			if (TKN.attr.kw == KW_UNDERSCORE)
+			{
+				NEXT_TOKEN()
+				if (TKN.type == TOKEN_COMMA)
+				{
+					APPLY_RULE(list_of_vars)
+					APPLY_RULE(assignment)
+					if (TKN.type != TOKEN_EOL)
+						return ERR_SYNTAX;
+				}
+				else if (TKN.type == TOKEN_ASSIGN || TKN.type == TOKEN_REASSIGN) //assignment
+				{
+					APPLY_RULE(assignment)
+					if (TKN.type != TOKEN_EOL)
+						return ERR_SYNTAX;
+				}
+				else
+					return ERR_SYNTAX;
+			}
+			else if (is_inter_func(TKN)) //calling inter functions
 			{
 				NEXT_TOKEN()
 				if (TKN.type == TOKEN_PAR_OPEN)
@@ -337,11 +356,11 @@ static int scope(data *data)
 static int assignment(data *data)
 {
 	APPLY_RULE(expression_start)
-	if (data->prev_token.type == TOKEN_COMMA)
+	if (TKN.type == TOKEN_COMMA)
 		return assignment(data);	
-	else if (data->prev_token.type == TOKEN_EOL || 
-			data->prev_token.type == TOKEN_SEMICOLON ||
-			data->prev_token.type == TOKEN_CURLY_OPEN)
+	else if (TKN.type == TOKEN_EOL || 
+			TKN.type == TOKEN_SEMICOLON ||
+			TKN.type == TOKEN_CURLY_OPEN)
 		return 0;
 	return ERR_SYNTAX;
 }
@@ -367,7 +386,7 @@ static int list_of_vars(data *data)
 static int statement(data *data)
 {
 	APPLY_RULE(expression)
-	if (data->prev_token.type == TOKEN_CURLY_OPEN)
+	if (TKN.type == TOKEN_CURLY_OPEN)
 	{
 		NEXT_TOKEN()
 		if (TKN.type != TOKEN_EOL)
@@ -415,7 +434,7 @@ static int cycle(data *data)
 		if (TKN.type == TOKEN_SEMICOLON)
 		{
 			APPLY_RULE(expression_start)
-			if (data->prev_token.type == TOKEN_SEMICOLON)
+			if (TKN.type == TOKEN_SEMICOLON)
 				return end_of_cycle(data);
 		}
 	}
@@ -438,7 +457,7 @@ static int end_of_cycle(data *data)
 		if (TKN.type == TOKEN_COMMA)
 		{
 			APPLY_RULE(list_of_vars)
-			if (data->prev_token.type != TOKEN_REASSIGN)
+			if (TKN.type != TOKEN_REASSIGN)
 				return ERR_SYNTAX;
 		}
 		else if (TKN.type != TOKEN_REASSIGN)
