@@ -294,7 +294,11 @@ int get_next_token(token *tok)
                 break;
 
             case SCANNER_COMMENT_START:
-                if (c == '*')
+                if (c == '\n')
+                {
+                    line += 1;
+                }
+                else if (c == '*')
                 {
                     state = SCANNER_COMMENT_END;
                 }
