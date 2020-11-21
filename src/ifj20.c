@@ -2,34 +2,26 @@
 #include "str.h"
 #include "scanner.h"
 #include "error.h"
+#include "parser.h"
 
 int main()
 {
     int result;
     token_type type;
-    do
-    {
-        string s;
-        str_init(&s);
-        set_token_string_attr(&s);
-        token *tok = (token*) malloc(sizeof(token));
-        result = get_next_token(tok);
-        type = tok->type;
-        printf("--------------------\n");
-        printf("Status: %d\n", result);
-        printf("Token type: %d\n", type);
 
-        if (tok->type == TOKEN_INT)
-            printf("Token long: %ld\n", tok->attr.int_val);
-        if (tok->type == TOKEN_FLOAT64)
-            printf("Token float64: %f\n", tok->attr.float64_val);
-        if (tok->type == TOKEN_IDENTIFIER || tok->type == TOKEN_STRING)
-            printf("Token str: %s\n", tok->attr.str->str);
-        if (tok->type == TOKEN_KEYWORD)
-            printf("Token kw: %d\n", tok->attr.kw);
+    string s;
+    str_init(&s);
+    set_token_string_attr(&s);
 
-        str_free(&s);
-        free(tok);
-    } while (type != TOKEN_EOF);
-    return 0;
+    data data;
+    init_data(&data);
+
+    int result = parse(&data);
+    if (result != 0)
+        fprintf(stderr, "%d", result);
+
+    dispose_data(&data);
+    str_free(&s);
+
+    return result;
 }
