@@ -105,6 +105,15 @@ static int func_header(data *data)
 		if (TKN.type == TOKEN_CURLY_OPEN) //start of body
 			return 0;
 	}
+	else if (TKN.type == TOKEN_KEYWORD)
+	{
+		if (TKN.attr.kw == KW_INT || TKN.attr.kw == KW_STRING || TKN.attr.kw == KW_FLOAT64) //one returned value withou ())
+		{
+			NEXT_TOKEN()
+			if (TKN.type == TOKEN_CURLY_OPEN) //starts of body
+				return 0;
+		}
+	}
 	return ERR_SYNTAX;
 }
 
@@ -362,6 +371,7 @@ static int scope(data *data)
 			{
 				APPLY_RULE(cycle)
 				APPLY_RULE(scope)
+				NEXT_TOKEN()
 			}
 			else if (TKN.attr.kw == KW_RETURN)
 			{
