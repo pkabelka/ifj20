@@ -6,10 +6,10 @@
 #include "parser.h"
 #include "scanner.h"
 #include "string.h"
+#include "error.h"
 
-#define CHECK(result) if (result != SCANNER_SUCCESS) return false;
-#define NEXT_TOKEN() data->prev_token = data->token; CHECK(get_next_token(&data->token));
-#define APPLY_RULE(func) if (func(data) == false) return false;
+#define NEXT_TOKEN() data->prev_token = data->token; if (get_next_token(&data->token) != SCANNER_SUCCESS) return ERR_LEX_STRUCTURE;
+#define APPLY_RULE(func) data->result = func(data); if (data->result != 0) return data->result;
 #define TKN data->token
 
 static int func_header(data *data);
@@ -27,32 +27,34 @@ static int statement(data *data);
 static int cycle(data *data);
 static int end_of_cycle(data *data);
 
-static int is_inter_func(token token);
+static bool is_inter_func(token token);
 
-static int init_data(data *data)
+int init_data(data *data)
 {
 	stack_init(&data->stack);
+	data->result = 0;
+
 	return true;
 }
 
-static int dispose_data(data *data)
+int dispose_data(data *data)
 {
 	stack_dispose(&data->stack);
 	return true;
 }
 
-static int parse(data *data)
+int parse(data *data)
 {
 	//program starts with 'package main'
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_KEYWORD)
-		return false;
+		return ERR_SYNTAX;
 	else if (TKN.attr.kw != KW_PACKAGE)
-		return false;
+		return ERR_SYNTAX;
 
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_IDENTIFIER && !str_cmp_const(TKN.attr.str, "main"))
-		return false;
+		return 10;
 
 	//parsing all functions
 	while (TKN.type != TOKEN_EOF)
@@ -64,55 +66,55 @@ static int parse(data *data)
 			APPLY_RULE(scope)
 		}
 		else if (TKN.type != TOKEN_EOL)
-			return false;
+			return ERR_SYNTAX;
 	}
 
-	return true;
+	return 0;
 }
 
 static int func_header(data *data)
 {
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_IDENTIFIER) //name of function 
-		return false;
+		return ERR_SYNTAX;
 
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_PAR_OPEN) // func name(
-		return false;
+		return ERR_SYNTAX;
 
 	APPLY_RULE(func_arg)
 
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_CURLY_OPEN) //start of body
-		return true;
+		return 0;
 	else if (TKN.type == TOKEN_PAR_OPEN) //return vals
 	{
 		APPLY_RULE(func_return_vals)
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_CURLY_OPEN) //start of body
-			return true;
+			return 0;
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int func_arg(data *data)
 {
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE) //no arguments
-		return true;
+		return 0;
 	else if (TKN.type == TOKEN_IDENTIFIER) //one or more
 	{
 		APPLY_RULE(var_type)
 		return next_func_arg(data);
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int next_func_arg(data *data)
 {
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE)
-		return true;
+		return 0;
 	else if (TKN.type == TOKEN_COMMA)
 	{
 		NEXT_TOKEN()
@@ -122,7 +124,7 @@ static int next_func_arg(data *data)
 			return next_func_arg(data);
 		}
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int func_return_vals(data *data)
@@ -130,10 +132,10 @@ static int func_return_vals(data *data)
 	APPLY_RULE(var_type)
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE)
-		return true;
+		return 0;
 	else if (TKN.type == TOKEN_COMMA)
 		return func_return_vals(data);
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int var_type(data *data)
@@ -145,27 +147,27 @@ static int var_type(data *data)
 		{
 			case KW_INT:
 
-				return true;
+				return 0;
 				break;
 			case KW_FLOAT64:
 
-				return true;
+				return 0;
 				break;
 			case KW_STRING:
 
-				return true;
+				return 0;
 				break;
 
 			case KW_NIL:
 
-				return true;
+				return 0;
 				break;
 
 			default:
-				return false;
+				return ERR_SYNTAX;
 		}
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int expression_start(data *data)
@@ -183,7 +185,7 @@ static int expression_start(data *data)
 	else if (TKN.type == TOKEN_ADD || TKN.type == TOKEN_SUB) //unary operators
 	{
 		if (TKN.type == data->prev_token.type) // ++ / --
-			return false;
+			return ERR_SYNTAX;
 		return expression_start(data);
 	}
 	else if (TKN.type == TOKEN_INT || TKN.type == TOKEN_STRING || TKN.type == TOKEN_FLOAT64) //constants
@@ -198,10 +200,10 @@ static int expression_start(data *data)
 	else if (TKN.type == TOKEN_PAR_CLOSE && data->prev_token.type == TOKEN_PAR_OPEN && 
 			*(int*)data->stack.top->data == 0 && data->stack.count > 0) //none argmunet in fnction call
 	{
-		return true;
+		return 0;
 	}
 
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int expression(data *data)
@@ -225,7 +227,7 @@ static int expression(data *data)
 			if (*(int*)data->stack.top->data >= 0)
 				return expression(data); 
 			else if (*(int*)data->stack.top->data == -1 && data->stack.count > 0) //end of expression ... end of calling function
-				return true;
+				return 0;
 			break;
 		//function
 		case TOKEN_PAR_OPEN:
@@ -242,13 +244,13 @@ static int expression(data *data)
 			break;
 		//end of expression
 		case TOKEN_COMMA: case TOKEN_EOL: case TOKEN_CURLY_OPEN: case TOKEN_SEMICOLON:
-			return true;
+			return 0;
 			break;
 
 		default:
-			return false;
+			return ERR_SYNTAX;
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int func_calling(data *data)
@@ -261,9 +263,9 @@ static int func_calling(data *data)
 	else if (TKN.type == TOKEN_PAR_CLOSE)
 	{
 		stack_pop(&data->stack);
-		return true;
+		return 0;
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int scope(data *data)
@@ -275,7 +277,7 @@ static int scope(data *data)
 		{
 			NEXT_TOKEN()
 			if (TKN.type == TOKEN_CURLY_CLOSE)
-				return true;
+				return 0;
 		}
 		
 		if (TKN.type == TOKEN_IDENTIFIER)
@@ -286,7 +288,7 @@ static int scope(data *data)
 				APPLY_RULE(list_of_vars)
 				APPLY_RULE(assignment)
 				if (data->prev_token.type != TOKEN_EOL)
-					return false;
+					return ERR_SYNTAX;
 			}
 			else if (TKN.type == TOKEN_PAR_OPEN) //function
 			{
@@ -296,10 +298,10 @@ static int scope(data *data)
 			{
 				APPLY_RULE(assignment)
 				if (data->prev_token.type != TOKEN_EOL)
-					return false;
+					return ERR_SYNTAX;
 			}
 			else
-				return false;
+				return ERR_SYNTAX;
 		}
 		else if (TKN.type == TOKEN_KEYWORD)
 		{
@@ -311,7 +313,7 @@ static int scope(data *data)
 					APPLY_RULE(func_calling)
 				}
 				else
-					return false;				
+					return ERR_SYNTAX;				
 			}
 			else if (TKN.attr.kw == KW_IF)
 			{
@@ -323,13 +325,13 @@ static int scope(data *data)
 				APPLY_RULE(scope)
 			}
 			else
-				return false;
+				return ERR_SYNTAX;
 		}
 		else
-			return false;
+			return ERR_SYNTAX;
 	} while (TKN.type != TOKEN_CURLY_CLOSE);
 
-	return true;
+	return 0;
 }
 
 static int assignment(data *data)
@@ -340,8 +342,8 @@ static int assignment(data *data)
 	else if (data->prev_token.type == TOKEN_EOL || 
 			data->prev_token.type == TOKEN_SEMICOLON ||
 			data->prev_token.type == TOKEN_CURLY_OPEN)
-		return true;
-	return false;
+		return 0;
+	return ERR_SYNTAX;
 }
 
 static int list_of_vars(data *data)
@@ -352,14 +354,14 @@ static int list_of_vars(data *data)
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_ASSIGN || TKN.type == TOKEN_REASSIGN)
 		{
-			return true;
+			return 0;
 		}
 		else if (TKN.type == TOKEN_COMMA) 
 		{
 			return list_of_vars(data);
 		}
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int statement(data *data)
@@ -369,7 +371,7 @@ static int statement(data *data)
 	{
 		NEXT_TOKEN()
 		if (TKN.type != TOKEN_EOL)
-			return false;
+			return ERR_SYNTAX;
 
 		APPLY_RULE(scope) //new scope if
 
@@ -378,16 +380,16 @@ static int statement(data *data)
 		{
 			NEXT_TOKEN()
 			if (TKN.type != TOKEN_CURLY_OPEN)
-				return false;
+				return ERR_SYNTAX;
 
 			NEXT_TOKEN()
 			if (TKN.type != TOKEN_EOL)
-				return false;
+				return ERR_SYNTAX;
 
 			return scope(data); //new scope else
 		}
 	}
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int cycle(data *data)
@@ -407,7 +409,7 @@ static int cycle(data *data)
 			APPLY_RULE(list_of_vars)
 		}
 		else if (TKN.type != TOKEN_ASSIGN && TKN.type != TOKEN_REASSIGN)
-			return false;
+			return ERR_SYNTAX;
 
 		APPLY_RULE(assignment)
 		if (TKN.type == TOKEN_SEMICOLON)
@@ -418,7 +420,7 @@ static int cycle(data *data)
 		}
 	}
 
-	return false;
+	return ERR_SYNTAX;
 }
 
 static int end_of_cycle(data *data)
@@ -428,7 +430,7 @@ static int end_of_cycle(data *data)
 	{
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_EOL)
-			return true;
+			return 0;
 	}
 	else if (TKN.type == TOKEN_IDENTIFIER)
 	{
@@ -437,10 +439,10 @@ static int end_of_cycle(data *data)
 		{
 			APPLY_RULE(list_of_vars)
 			if (data->prev_token.type != TOKEN_REASSIGN)
-				return false;
+				return ERR_SYNTAX;
 		}
 		else if (TKN.type != TOKEN_REASSIGN)
-			return false;
+			return ERR_SYNTAX;
 
 		APPLY_RULE(assignment)
 		if (TKN.type == TOKEN_CURLY_OPEN)
@@ -448,15 +450,15 @@ static int end_of_cycle(data *data)
 			NEXT_TOKEN()
 			if (TKN.type == TOKEN_EOL)
 			{
-				return true;
+				return 0;
 			}
 		}
 	}
 
-	return false;
+	return ERR_SYNTAX;
 }
 
-static int is_inter_func(token token)
+static bool is_inter_func(token token)
 {
 	switch (token.attr.kw)
 	{
@@ -466,4 +468,6 @@ static int is_inter_func(token token)
 		default:
 			return false;
 	}
+
+	return false;
 }

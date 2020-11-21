@@ -15,8 +15,10 @@ typedef struct
 {
 	token prev_token, token;
 	stack stack; // stack of brackets nested in function argument
+
+	int result;
 } data;
 
-static int parse(data *data);
-static int init_data(data *data);
-static int dispose_data(data *data);
+int parse(data *data);
+int init_data(data *data);
+int dispose_data(data *data);
