@@ -8,7 +8,7 @@
 
 bool str_init(string *s)
 {
-    if ((s->str = (char*) malloc(sizeof(STR_ALLOC_CONST))) == NULL)
+    if ((s->str = (char*) malloc(sizeof(char) * STR_ALLOC_CONST)) == NULL)
     {
         return false;
     }
@@ -34,9 +34,9 @@ void str_clear(string *s)
 
 bool str_add(string *s, char c)
 {
-    if ((s->len + sizeof(char)) >= s->mem_size)
+    if ((s->len + 1) >= s->mem_size)
     {
-        if ((s->str = (char*) realloc(s->str, s->len + STR_ALLOC_CONST)) == NULL)
+        if ((s->str = (char*) realloc(s->str, (s->len + STR_ALLOC_CONST) * sizeof(char))) == NULL)
         {
             return false;
         }
@@ -51,13 +51,13 @@ bool str_add(string *s, char c)
 bool str_add_const(string *s, const char *cstr)
 {
     unsigned int cstr_len = (unsigned int)strlen(cstr);
-    if ((s->len + cstr_len + sizeof(char)) >= s->mem_size)
+    if ((s->len + cstr_len + 1) >= s->mem_size)
     {
-        if ((s->str = (char*) realloc(s->str, s->len + cstr_len + sizeof(char))) == NULL)
+        if ((s->str = (char*) realloc(s->str, (s->len + cstr_len + 1) * sizeof(char))) == NULL)
         {
             return false;
         }
-        s->mem_size = s->len + cstr_len + sizeof(char);
+        s->mem_size = s->len + cstr_len + 1;
     }
 
     s->len += cstr_len;
@@ -68,13 +68,13 @@ bool str_add_const(string *s, const char *cstr)
 
 bool str_copy(string *src, string *dst)
 {
-    if ((src->len + sizeof(char)) >= dst->mem_size)
+    if ((src->len + 1) >= dst->mem_size)
     {
-        if ((dst->str = (char*) realloc(dst->str, src->len + sizeof(char))) == NULL)
+        if ((dst->str = (char*) realloc(dst->str, (src->len + 1) * sizeof(char))) == NULL)
         {
             return false;
         }
-        dst->mem_size = src->len + sizeof(char);
+        dst->mem_size = src->len + 1;
     }
 
     strcpy(dst->str, src->str);
