@@ -127,8 +127,6 @@ void set_token_string_attr(string *s)
     token_string_attr = s;
 }
 
-static int line = 1;
-
 int get_next_token(token *tok)
 {
     string str;
@@ -136,6 +134,11 @@ int get_next_token(token *tok)
     {
         return ERR_INTERNAL;
     }
+
+    /**
+     * Keeps track of the token line number
+     */
+    static int line = 1;
 
     // set the token attribute str pointer to an initialized dynamic string
     tok->attr.str = token_string_attr;
