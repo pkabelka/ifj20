@@ -16,7 +16,7 @@ func main() {
 	err := 0
 	s1, err = inputs()
 	if err != 1 {
-		for s1 != "abcdefgh" {
+		for ;s1 != "abcdefgh"; {
 			print("\n", "Spatne zadana posloupnost, zkuste znovu: ")
 			s1, _ = inputs()
 		}

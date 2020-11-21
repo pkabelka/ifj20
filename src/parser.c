@@ -554,7 +554,7 @@ static bool is_inter_func(token token)
 	switch (token.attr.kw)
 	{
 		case KW_CHR: case KW_FLOAT2INT: case KW_INPUTF: case KW_PRINT: case KW_SUBSTR:
-		case KW_INPUTI: case KW_INPUTS: case KW_INT2FLOAT: case KW_ORD: 
+		case KW_INPUTI: case KW_INPUTS: case KW_INT2FLOAT: case KW_ORD: case KW_LEN: 
 			return true;
 		default:
 			return false;
