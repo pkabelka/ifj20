@@ -16,7 +16,7 @@ void symstack_init(symstack_el_p *s)
 
 bool symstack_push(symstack_el_p *s, bool defined, data_type type)
 {
-    symstack_el_p tmp = malloc(sizeof(struct stack_el));
+    symstack_el_p tmp = malloc(sizeof(struct symstack_el));
     if (tmp == NULL)
     {
         return false;
