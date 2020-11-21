@@ -15,7 +15,7 @@ int main()
 
     int result = parse(&data);
     if (result != 0)
-        fprintf(stderr, "%d", result);
+        fprintf(stderr, "%d - line: %d", result, data.token.line);
 
     dispose_data(&data);
     str_free(&s);
