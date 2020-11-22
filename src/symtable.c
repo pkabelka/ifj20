@@ -9,50 +9,6 @@
 #include "error.h"
 #include "stack.h"
 
-void symstack_init(symstack_el_p *s)
-{
-    *s = NULL;
-}
-
-bool symstack_push(symstack_el_p *s, bool defined, data_type type)
-{
-    symstack_el_p tmp = malloc(sizeof(struct symstack_el));
-    if (tmp == NULL)
-    {
-        return false;
-    }
-
-    tmp->next = *s;
-    tmp->defined = defined;
-    tmp->type = type;
-    tmp->params = malloc(sizeof(string));
-    str_init(tmp->params);
-    *s = tmp;
-    return true;
-}
-
-void symstack_pop(symstack_el_p *s)
-{
-    if (*s == NULL)
-    {
-        return;
-    }
-
-    symstack_el_p tmp = (*s)->next;
-    str_free((*s)->params);
-    free((*s)->params);
-    free(*s);
-    *s = tmp;
-}
-
-void symstack_dispose(symstack_el_p *s)
-{
-    while (*s != NULL)
-    {
-        symstack_pop(s);
-    }
-}
-
 void symtable_init(stnode_ptr *root)
 {
     *root = NULL;
@@ -79,9 +35,6 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
             return NULL;
         }
         strcpy(new->key, key);
-
-        symstack_init(&new->data);
-        symstack_push(&new->data, false, NONE);
 
         *root = new;
         return new;
@@ -116,9 +69,6 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
-                symstack_init(&new->data);
-                symstack_push(&new->data, false, NONE);
-
                 tmp->lnode = new; // new node is on the left
                 return new;
             }
@@ -148,16 +98,12 @@ stnode_ptr symtable_insert(stnode_ptr *root, const char *key, bool *error)
                 }
                 strcpy(new->key, key);
 
-                symstack_init(&new->data);
-                symstack_push(&new->data, false, NONE);
-
                 tmp->rnode = new; // new node will be inserted on the right side of current
                 return new;
             }
         }
         else
         {
-            symstack_push(&tmp->data, false, NONE);
             return NULL;
         }
     }
@@ -204,7 +150,7 @@ static void leftmost_inorder(stnode_ptr ptr, stack *st)
     }
 }
 
-void symtable_dispose(stnode_ptr *root)
+void symtable_dispose(stnode_ptr *root, void (*free_data)(void *))
 {
     if (*root == NULL)
     {
@@ -221,24 +167,26 @@ void symtable_dispose(stnode_ptr *root)
         ptr = st.top->data;
         stack_pop(&st);
         leftmost_inorder(ptr->rnode, &st);
-        symstack_dispose(&ptr->data);
+        free_data(ptr->data);
         free(ptr->key);
         free(ptr);
     }
     *root = NULL;
 }
 
-static void replace_by_rightmost (stnode_ptr ptr_replaced, stnode_ptr *root)
+static void replace_by_rightmost (stnode_ptr ptr_replaced, stnode_ptr *root, void (*free_data)(void *))
 {
     if (*root != NULL)
     {
         if ((*root)->rnode != NULL)
         {
-            replace_by_rightmost(ptr_replaced, &(*root)->rnode);
+            replace_by_rightmost(ptr_replaced, &(*root)->rnode, free_data);
         }
         else
         {
             free(ptr_replaced->key);
+            free_data(ptr_replaced->data);
+            ptr_replaced->data = (*root)->data;
             ptr_replaced->key = (*root)->key;
             if ((*root)->lnode != NULL)
             {
@@ -255,7 +203,7 @@ static void replace_by_rightmost (stnode_ptr ptr_replaced, stnode_ptr *root)
     }
 }
 
-void symtable_delete_node (stnode_ptr *root, const char *key)
+void symtable_delete_node (stnode_ptr *root, const char *key, void (*free_data)(void *))
 {
     if (*root == NULL)
     {
@@ -264,28 +212,30 @@ void symtable_delete_node (stnode_ptr *root, const char *key)
     int comp = strcmp(key, (*root)->key);
     if (comp < 0)
     {
-        symtable_delete_node(&(*root)->lnode, key);
+        symtable_delete_node(&(*root)->lnode, key, free_data);
     }
     else if (comp > 0)
     {
-        symtable_delete_node(&(*root)->rnode, key);
+        symtable_delete_node(&(*root)->rnode, key, free_data);
     }
     else
     {
         if ((*root)->lnode == NULL && (*root)->rnode == NULL)
         {
+            free_data((*root)->data);
             free((*root)->key);
             free(*root);
             *root = NULL;
         }
         else if ((*root)->lnode != NULL && (*root)->rnode != NULL)
         {
-            replace_by_rightmost(*root, &(*root)->lnode);
+            replace_by_rightmost(*root, &(*root)->lnode, free_data);
         }
         else if ((*root)->lnode == NULL)
         {
             stnode_ptr old_root = *root;
             *root = (*root)->rnode;
+            free_data(old_root->data);
             free(old_root->key);
             free(old_root);
         }
@@ -293,6 +243,7 @@ void symtable_delete_node (stnode_ptr *root, const char *key)
         {
             stnode_ptr old_root = *root;
             *root = (*root)->lnode;
+            free_data(old_root->data);
             free(old_root->key);
             free(old_root);
         }

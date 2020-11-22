@@ -14,8 +14,6 @@
 #include "str.h"
 #include "stack.h"
 
-#define SYMTABLE_SUCCESS 0
-
 typedef enum
 {
     NONE,
@@ -25,48 +23,20 @@ typedef enum
 } data_type;
 
 /**
- * @struct Symbol stack element
- *
- * The stack is implemented as a singly linked list
+ * @struct Symbol table node data
  */
-typedef struct symstack_el
+typedef struct stdata
 {
-    struct symstack_el *next;
-    string *params;
     bool defined;
     data_type type;
-} *symstack_el_p;
-
-/**
- * @brief Initializes symbol stack to NULL
- * @param s Stack pointer
- */
-void symstack_init(symstack_el_p *s);
-
-/**
- * @brief Disposes all elements on the symbol stack
- * @param s Stack pointer
- */
-void symstack_dispose(symstack_el_p *s);
-
-/**
- * @brief Pushes data on top of the symbol stack
- * @param data Pointer to some data
- * @return true if push completed successfully
- */
-bool symstack_push(symstack_el_p *s, bool defined, data_type type);
-
-/**
- * @brief Removes an element from top of the symbol stack
- */
-void symstack_pop(symstack_el_p *s);
+} *stdata_p;
 
 /**
  * @struct Symbol table node
  */
 typedef struct stnode {
     char *key; // node key
-    symstack_el_p data;
+    void *data;
     struct stnode *lnode; // left subtree
     struct stnode *rnode; // right subtree
 } *stnode_ptr;
@@ -90,15 +60,16 @@ stnode_ptr symtable_insert (stnode_ptr *root, const char *key, bool *error);
 
 /**
  * @brief Disposes all nodes in tree and frees memory
- * @param root tree to be disposed
+ * @param root pointer to the tree to be disposed
+ * @param free_data pointer to a function which frees the node data
  */
-void symtable_dispose(stnode_ptr *root);
+void symtable_dispose(stnode_ptr *root, void (*free_data)(void *));
 
 /**
  * @brief Deletes a node in symtable
  * @param root pointer to a tree root pointer
  * @param key key of the node to delete
  */
-void symtable_delete_node (stnode_ptr *root, const char *key);
+void symtable_delete_node (stnode_ptr *root, const char *key, void (*free_data)(void *));
 
 #endif
