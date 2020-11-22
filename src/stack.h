@@ -43,7 +43,7 @@ void stack_init(stack *s);
  * @brief Disposes all elements on the stack
  * @param s Stack pointer
  */
-void stack_dispose(stack *s);
+void stack_dispose(stack *s, void (*free_data)(void *));
 
 /**
  * @brief Pushes data on top of the stack
@@ -55,6 +55,13 @@ bool stack_push(stack *s, void *data);
 /**
  * @brief Removes an element from top of the stack
  */
-void stack_pop(stack *s);
+void stack_pop(stack *s, void (*free_data)(void *));
+
+/**
+ * @brief The function does not do anything useful
+ * 
+ * Useful when popping from stack when you don't want to free the data
+ */
+void stack_nofree(void *data);
 
 #endif

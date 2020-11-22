@@ -27,7 +27,7 @@ bool stack_push(stack *s, void *data)
     return true;
 }
 
-void stack_pop(stack *s)
+void stack_pop(stack *s, void (*free_data)(void *))
 {
     if (s->top == NULL)
     {
@@ -37,13 +37,19 @@ void stack_pop(stack *s)
     struct stack_el *tmp = s->top;
     s->top = tmp->next;
     s->count -= 1;
+    free_data(tmp->data);
     free(tmp);
 }
 
-void stack_dispose(stack *s)
+void stack_dispose(stack *s, void (*free_data)(void *))
 {
     while (s->top != NULL)
     {
-        stack_pop(s);
+        stack_pop(s, free_data);
     }
+}
+
+void stack_nofree(void *data)
+{
+    (void)data;
 }

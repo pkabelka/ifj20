@@ -165,7 +165,7 @@ void symtable_dispose(stnode_ptr *root, void (*free_data)(void *))
     while (st.top != NULL)
     {
         ptr = st.top->data;
-        stack_pop(&st);
+        stack_pop(&st, stack_nofree);
         leftmost_inorder(ptr->rnode, &st);
         free_data(ptr->data);
         free(ptr->key);
