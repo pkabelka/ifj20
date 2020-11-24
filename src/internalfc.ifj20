@@ -10,12 +10,6 @@ DEFVAR TF@%0
 DEFVAR TF@%1
 DEFVAR TF@%2
 
-MOVE TF@%0 int@256
-
-call $chr
-#WRITE TF@%retval
-
-
 CLEARS
 JUMP $$EOF
 
@@ -73,14 +67,14 @@ LABEL $while
 POPS LF@tmp
 WRITE LF@tmp
 ADD LF@index LF@index int@1
-JUMPIFNEQ $while LF@index LF@%0 #REPLACE WITH %0
+JUMPIFNEQ $while LF@index LF@%0
 POPFRAME
 RETURN
 
 LABEL $int2float
 PUSHFRAME
 DEFVAR LF@%retval
-INT2FLOAT LF@%retval LF@%0 #REPLACE WITH %0
+INT2FLOAT LF@%retval LF@%0
 WRITE LF@%retval
 POPFRAME
 RETURN
@@ -136,7 +130,7 @@ JUMP $continue
 LABEL $ord
 PUSHFRAME
 DEFVAR LF@err
-DEFVAR LF@%retval #Vrátí ordinální hodnotu (ASCII)znaku na pozici 𝑖 v řetězci 𝑠. Je-li index𝑖mimo meze řetězce (0 ažlen(s)- 1), vracífunkce v příznaku chyby hodnotu 1.
+DEFVAR LF@%retval 
 STRLEN LF@%retval LF@%0
 SUB LF@%retval LF@%retval LF@%1
 GT LF@err LF@%1 LF@%retval
