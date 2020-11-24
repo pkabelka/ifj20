@@ -50,6 +50,7 @@ void* dll_get(dll_t *list, int index) {
     else {
         // error message
     }
+    return NULL;
 }
 
 bool dll_insert(dll_t *list, int index, void *data) {
@@ -269,11 +270,10 @@ bool dll_dispose(dll_t *list, void (*delete_ptr)(void*)) {
         }
         else {
             // error message
-            return false;
         }
     }
     else {
         // error message
-        return false;
     }
+    return false;
 }
