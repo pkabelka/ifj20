@@ -66,6 +66,31 @@ bool str_add_const(string *s, const char *cstr)
     return true;
 }
 
+bool str_add_var(string *s, ...)
+{
+    va_list ap;
+    va_start(ap, s);
+    char *cstr;
+    while ((cstr = va_arg(ap, char *)) != NULL)
+    {
+        unsigned int cstr_len = (unsigned int)strlen(cstr);
+        if ((s->len + cstr_len + 1) >= s->mem_size)
+        {
+            if ((s->str = (char*) realloc(s->str, (s->len + cstr_len + 1) * sizeof(char))) == NULL)
+            {
+                return false;
+            }
+            s->mem_size = s->len + cstr_len + 1;
+        }
+
+        s->len += cstr_len;
+        strcat(s->str, cstr);
+        s->str[s->len] = '\0';
+    }
+    va_end(ap);
+    return true;
+}
+
 bool str_copy(string *src, string *dst)
 {
     if ((src->len + 1) >= dst->mem_size)

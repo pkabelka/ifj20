@@ -10,8 +10,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 
 #define STR_ALLOC_CONST 8 // Constant of 8 bytes to prevent reallocating with each character
+// #define str_add_var(...) str_add_var(__VA_ARGS__, NULL)
 
 /**
  * @struct Dynamic string
@@ -55,6 +57,14 @@ bool str_add(string *s, char c);
  * @return True upon successful append
  */
 bool str_add_const(string *s, const char *cstr);
+
+/**
+ * @brief Appends a multiple string literals to the dynamic string
+ * @param s Pointer to the string structure
+ * @param ... unlimited parameters of type char *, last parameter MUST be NULL
+ * @return True upon successful append
+ */
+bool str_add_var(string *s, ...);
 
 /**
  * @brief Copies the dynamic string from src to dst
