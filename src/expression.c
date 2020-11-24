@@ -57,6 +57,26 @@ static int push_id(data_t *data, token token, dll_t *list);
 static int push_o(token token, dll_t *list, stack *sym_stack);
 static char compare_types(char a, char b);
 
+void free_symbol(void *ptr)
+{
+	symbol_t *sym = (symbol_t*)ptr;
+	if (sym->sym_type == SYM_VAR)
+	{ 
+		//data will be cleaer from sym tabel
+	}
+	else if (sym->sym_type == SYM_OPERATOR)
+		free(sym->data);
+	else if (sym->sym_type == SYM_STRING)
+	{
+		string *s = sym->data;
+		str_free(s);
+		free(s);
+	}
+	else
+		free(sym->data);
+	free(sym);
+}
+
 int expression(data_t *data)
 {
 	dll_t *list = dll_init();
@@ -64,13 +84,25 @@ int expression(data_t *data)
 	stack_init(&sym_stack);
 
 	int r = start_of_expression(data, list, &sym_stack);
-	if (r == 0)
+	if (r == 0 && TKN.type != TOKEN_PAR_OPEN)
 	{
+		//pushing rest of operators
+		struct stack_el *elem = sym_stack.top;
+		while (elem != NULL)
+		{
+			symbol_t *sym = malloc(sizeof(symbol_t));
+			sym->sym_type = SYM_OPERATOR;
+			sym->data = sym_stack.top->data;
+			dll_insert_last(list, sym);
+			stack_pop(&sym_stack, stack_nofree);
+		}
+
 		//TODO: generate internal code and optimize
 		data->vdata->type = data->current_type;
 		//TODO: generate code
 	}
 
+	stack_dispose(&sym_stack, free_symbol);
 	dll_destroy(list);
 	return r;
 }
@@ -99,7 +131,7 @@ static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 		data->result = bracket_scope(data, sub_list, sym_stack);
 		CHECK_RESULT()
 
-		dll_join(list, sub_list);
+		dll_join_lists(list, sub_list);
 		
 		APPLY_NEXT_RULE(end_of_expression)
 		return 0;
@@ -164,6 +196,8 @@ static int push_id(data_t *data, token token, dll_t *list)
 	data->current_type = compare_types(var->type, data->current_type);
 	if (data->current_type == '0')
 		return ERR_SEMANTIC_TYPE_COMPAT;
+
+	dll_insert_last(list, sym);
 	return 0;
 }
 
@@ -199,6 +233,8 @@ static int push_const(data_t *data, token token, dll_t *list)
 
 	if (data->current_type == '0')
 		return ERR_SEMANTIC_TYPE_COMPAT;
+
+	dll_insert_last(list, sym);
 	return 0;
 }
 
@@ -220,7 +256,7 @@ static int bracket_scope(data_t *data, dll_t *list, stack *sym_stack) //preferen
 			symbol_t *sym = malloc(sizeof(symbol_t));
 			sym->sym_type = SYM_OPERATOR;
 			sym->data = sym_stack->top->data;
-			dll_push(list, sym);
+			dll_insert_last(list, sym);
 			stack_pop(sym_stack, stack_nofree);
 		}
 		return 0;
@@ -247,7 +283,7 @@ static int push_o(token token, dll_t *list, stack *sym_stack)
 		symbol_t *sym = malloc(sizeof(symbol_t));
 		sym->sym_type = SYM_OPERATOR;
 		sym->data = sym_stack->top->data;
-		dll_push(list, sym);
+		dll_insert_last(list, sym);
 		stack_pop(sym_stack, stack_nofree);
 	}
 
