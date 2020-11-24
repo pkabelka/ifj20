@@ -1,6 +1,7 @@
+#ifndef _DLL_H
+#define _DLL_H
 #include <stdlib.h>
 #include <stdbool.h>
-
 typedef struct dll_node_t {
     void *data;
     struct dll_node_t *prev;
@@ -22,8 +23,9 @@ bool dll_insert(dll_t*, int, void*);
 bool dll_insert_first(dll_t*, void*);
 bool dll_insert_last(dll_t*, void*);
 
-bool dll_delete(dll_t*, int, void (delete_ptr*)(void*));
-bool dll_delete_first(dll_t*, void (delete_ptr*)(void*));
-bool dll_delete_last(dll_t*, void (delete_ptr*)(void*));
+bool dll_delete(dll_t*, int, void (*delete_ptr)(void*));
+bool dll_delete_first(dll_t*, void (*delete_ptr)(void*));
+bool dll_delete_last(dll_t*, void (*delete_ptr)(void*));
 
-bool dll_dispose(dll_t*, void (delete_ptr*)(void*));
+bool dll_dispose(dll_t*, void (*delete_ptr)(void*));
+#endif
