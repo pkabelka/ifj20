@@ -10,7 +10,7 @@ int main()
     str_init(&s);
     set_token_string_attr(&s);
 
-    data data;
+    data_t data;
     init_data(&data);
 
     int result = parse(&data);
