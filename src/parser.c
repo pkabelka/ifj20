@@ -3,6 +3,7 @@
  * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
  */
 
+#include <math.h>
 #include "parser.h"
 #include "scanner.h"
 #include "str.h"
@@ -34,11 +35,11 @@ static int cycle(data_t *data);
 static int end_of_cycle(data_t *data);
 static int condition(data_t *data);
 static int returned_vals(data_t *data);
-static int next_returned_val(data_t *data, int n);
+static int next_returned_val(data_t *data, unsigned int n);
 static int new_scope(data_t *data);
 static int close_scope(data_t *data);
 static int end_of_assignment(data_t *data, dll_node_t *node);
-static int check_ret_vals(data_t *data, char type,  int n);
+static int check_ret_vals(data_t *data, char type, unsigned int n);
 static int check_func_calls(data_t *data);
 
 static const char* kw_to_char(keyword kw);
@@ -46,6 +47,8 @@ static bool add_inter_func_to_table(data_t *data);
 static char tkn_to_char(token token);
 static bool add_to_assign_list(data_t *data, token token);
 static void set_return_types(data_t *data, dll_node_t *node);
+static bool compare_list_of_types(string expected, string sent);
+static var_data_t* create_aux_var(data_t *data);
 
 bool init_func_data(void **ptr);
 bool init_func_call_data(func_call_data_t **fcd);
@@ -121,12 +124,14 @@ void free_func_data(void *ptr)
 
 void free_local_scope(void *ptr)
 {
-	//symtable_dispose();
+	stnode_ptr node = (stnode_ptr)ptr;
+	free_var_data(node->data);
+	free(ptr);
 }
 
 void free_var_data(void *ptr)
 {
-	return;
+	free(ptr);
 }
 
 int parse(data_t *data)
@@ -380,7 +385,7 @@ static int assignment(data_t *data)
 			return ERR_SEMANTIC_UNDEF_REDEF; //variable alreay exist in current scope
 
 		bool err;
-		stnode_ptr ptr = symtable_insert(&data->var_tabel, assign->name.str, &err);
+		stnode_ptr ptr = symtable_insert(data->var_tabel.top->data, assign->name.str, &err);
 		if (ptr == NULL)
 			return ERR_INTERNAL;
 
@@ -393,8 +398,11 @@ static int assignment(data_t *data)
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
 
-	dll_clear(data->assign_list);
-
+	//dispose and init new instead of clear
+	dll_dispose(data->assign_list, free);
+	data->assign_list = dll_init();
+	if (data->assign_list == NULL)
+		return ERR_INTERNAL;
 	return 0;
 }
 
@@ -404,7 +412,7 @@ static int reassignment(data_t *data)
 	while (node != NULL)
 	{
 		var_data_t *assign = (var_data_t*)node->data;
-		var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
+		var_data_t *vd = find_var(data, assign->name.str, false);
 		if (vd == NULL)
 			return ERR_SEMANTIC_UNDEF_REDEF;
 		node = node->next;
@@ -639,7 +647,7 @@ static int returned_vals(data_t *data)
 	return ERR_SYNTAX;
 }
 
-static int next_returned_val(data_t *data, int n)
+static int next_returned_val(data_t *data, unsigned int n)
 {
 	var_data_t *auxn = create_aux_var(data);
 	data->vdata = auxn;	
@@ -683,6 +691,7 @@ static int close_scope(data_t *data)
 {
 	stack_pop(&data->aux, free);
 	stack_pop(&data->var_tabel, free_local_scope);
+	return 0;
 }
 
 bool is_inter_func(token token)
@@ -841,7 +850,7 @@ static bool add_to_assign_list(data_t *data, token token)
 	str_init(&vd->name);
 	str_add_const(&vd->name, token.attr.str->str);
 	vd->type = tkn_to_char(token);
-	dll_insert_last(&data->assign_list, vd);
+	dll_insert_last(data->assign_list, vd);
 	return true;
 }
 
@@ -890,14 +899,14 @@ char compare_types(char a, char b)
 		return b;
 	else if (b == 't')
 		return a;
-	else if (a == b);
+	else if (a == b)
 		return b;
 	return '0';	
 }
 
-static int check_ret_vals(data_t *data, char type,  int n)
+static int check_ret_vals(data_t *data, char type, unsigned int n)
 {	
-	if (n >data->fdata->ret_val_types.len)
+	if (n > data->fdata->ret_val_types.len)
 		return ERR_SEMANTIC_FUNC_PARAMS; //return too many vals
 
 	char c = data->fdata->ret_val_types.str[n];
@@ -913,7 +922,7 @@ static bool compare_list_of_types(string expected, string sent)
 	if (expected.len != sent.len)
 		return false; //bad argument count
 
-	for (int i = 0; i < expected.len; i++)
+	for (unsigned int i = 0; i < expected.len; i++)
 	{
 		if (compare_types(expected.str[i], sent.str[i]) == '0')
 			return false;
