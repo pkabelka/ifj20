@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-std=c99 -Wall -Wextra -g -DDEBUG
-LDFLAGS=
+LDFLAGS=-lm
 src=$(wildcard *.c)
 obj=$(src:.c=.o)
 headers=$(wildcard *.h)
