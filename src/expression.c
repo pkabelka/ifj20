@@ -55,7 +55,7 @@ static int bracket_scope(data_t *data, dll_t *list, stack *sym_stack);
 static int push_const(data_t *data, token token, dll_t *list);
 static int push_id(data_t *data, token token, dll_t *list);
 static int push_o(token token, dll_t *list, stack *sym_stack);
-static char compare_types(char a, char b);
+static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack);
 
 void free_symbol(void *ptr)
 {
@@ -102,8 +102,8 @@ int expression(data_t *data)
 		//TODO: generate code
 	}
 
-	stack_dispose(&sym_stack, free_symbol);
-	dll_destroy(list);
+	stack_dispose(&sym_stack, free);
+	dll_dispose(list, free_symbol);
 	return r;
 }
 
@@ -185,7 +185,7 @@ static int end_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 
 static int push_id(data_t *data, token token, dll_t *list)
 {
-	var_data_t *var = find_var(data, data->token.attr.str, false);
+	var_data_t *var = find_var(data, token.attr.str->str, false);
 	if (var == NULL)
 		return ERR_SEMANTIC_UNDEF_REDEF;
 
@@ -226,7 +226,7 @@ static int push_const(data_t *data, token token, dll_t *list)
 		sym->sym_type = SYM_STRING;
 		string *str = malloc(sizeof(string));
 		str_init(str);
-		str_add_const(str, token.attr.str);
+		str_add_const(str, token.attr.str->str);
 		sym->data = str;
 		data->current_type = compare_types('s', data->current_type);
 	}
@@ -267,6 +267,9 @@ static int bracket_scope(data_t *data, dll_t *list, stack *sym_stack) //preferen
 static int push_o(token token, dll_t *list, stack *sym_stack)
 {
 	o_type *ot = malloc(sizeof(o_type)); //currently loaded operator
+	if (ot == NULL)
+		return ERR_INTERNAL;
+
 	if (token.type == TOKEN_ADD)
 		*ot = S_ADD;
 	else if (token.type == TOKEN_SUB)
@@ -281,11 +284,17 @@ static int push_o(token token, dll_t *list, stack *sym_stack)
 	while (elem != NULL && precedence[*ot][*(o_type*)elem->data] == -1)
 	{
 		symbol_t *sym = malloc(sizeof(symbol_t));
+		if (sym == NULL)
+			return ERR_INTERNAL;
+
 		sym->sym_type = SYM_OPERATOR;
 		sym->data = sym_stack->top->data;
-		dll_insert_last(list, sym);
+		if (!dll_insert_last(list, sym))
+			return ERR_INTERNAL;
+			
 		stack_pop(sym_stack, stack_nofree);
 	}
 
 	stack_push(sym_stack, ot);
+	return 0;
 }
