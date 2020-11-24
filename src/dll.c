@@ -54,8 +54,11 @@ void* dll_get(dll_t *list, int index) {
 
 bool dll_insert(dll_t *list, int index, void *data) {
     if (index >= 0) {
+        if (index == 0) return dll_insert_first(list, data);
+        if (list->size == index) return dll_insert_last(list, data);
+
         if (list != NULL) {
-            if (list->size > index) {
+            if (list->size >= index) {
                 dll_node_t *new_node = (dll_node_t*)malloc(sizeof(dll_node_t));
                 if (new_node == NULL) {
                     // error message
@@ -63,36 +66,30 @@ bool dll_insert(dll_t *list, int index, void *data) {
                 }
                 new_node->data = data;
 
-                if (index == 0) {
-                    return dll_insert_first(list, data);
+                dll_node_t *tmp = list->first;
+                for (int i = 0; i < index; i++) {
+                    tmp = tmp->next;
                 }
-                else {
-                    dll_node_t *tmp = list->first;
-                    for (int i = 0; i < index; i++) {
-                        tmp = tmp->next;
-                    }
-                    new_node->prev = tmp->prev;
-                    new_node->next = tmp;
-                    tmp->prev = new_node;
-
-                    if (list->size == index) {
-                        list->last = new_node;
-                    }
-                }
+                new_node->prev = tmp->prev;
+                new_node->next = tmp;
+                tmp->prev = new_node;
                 list->size++;
 
                 return true;
             }
             else {
                 // error message
+                return false;
             }
         }
         else {
             // error message
+            return false;
         }
     }
     else {
         // error message
+        return false;
     }
 }
 
@@ -125,10 +122,158 @@ bool dll_insert_first(dll_t *list, void *data) {
         return false;
     }
 }
-bool dll_insert_last(dll_t*, void *);
+bool dll_insert_last(dll_t *list, void *data) {
+    if (list != NULL) {
+        dll_node_t *new_node = (dll_node_t*)malloc(sizeof(dll_node_t));
+        if (new_node == NULL) {
+            // error message
+            return false;
+        }
+        new_node->data = data;
+        new_node->next = NULL;
 
-bool dll_delete(dll_t*, int, void (delete_ptr*)(void*));
-bool dll_delete_first(dll_t*, void (delete_ptr*)(void*));
-bool dll_delete_last(dll_t*, void (delete_ptr*)(void*));
+        if (list->last == NULL) {
+            new_node->prev = NULL;
+            list->last = new_node;
+            list->first = new_node;
+        }
+        else {
+            new_node->prev = list->last;
+            list->last->next = new_node;
+            list->last = new_node;
+        }
+        list->size++;
 
-bool dll_dispose(dll_t*, void (delete_ptr*)(void*));
+        return true;
+    }
+    else {
+        // error message
+        return false;
+    }
+}
+
+bool dll_delete(dll_t *list, int index, void (delete_ptr*)(void*)) {
+    if (index >= 0) {
+        if (index == 0) return dll_delete_first(list, delete_ptr);
+        if (index == list->size - 1) return dll_delete_last(list, delete_ptr);
+
+        if (list != NULL) {
+            if (list->size > index) {
+                dll_node_t *tmp = list->first;
+                for (int i = 0; i < index; i++) {
+                    tmp = tmp->next;
+                }
+                tmp->prev->next = tmp->next;
+                tmp->next->prev = tmp->prev;
+                delete_ptr(tmp->data);
+                free(tmp);
+                list->size--;
+
+                return true;
+            }
+            else {
+                // error message
+                return false;
+            }
+        }
+        else {
+            // error message
+            return false;
+        }
+    }
+    else {
+        // error message
+        return false;
+    }
+}
+
+bool dll_delete_first(dll_t *list, void (delete_ptr*)(void*)) {
+    if (list != NULL) {
+        if (list->first != NULL) {
+            if (list->last == list->first) {
+                delete_ptr(list->first->data);
+                free(list->first);
+                list->first = NULL;
+                list->last = NULL;
+            }
+            else {
+                dll_node_t *tmp = list->first;
+
+                list->first = list->first->next;
+                list->first->prev = NULL;
+                delete_ptr(tmp->data);
+                free(tmp);
+            }
+            list->size--;
+
+            return true;
+        }
+        else {
+            // error message
+            return false;
+        }
+    }
+    else {
+        // error message
+        return false;
+    }
+}
+
+bool dll_delete_last(dll_t *list, void (delete_ptr*)(void*)) {
+    if (list != NULL) {
+        if (list->last != NULL) {
+            if (list->last == list->first) {
+                delete_ptr(list->last->data);
+                free(list->last);
+                list->first = NULL;
+                list->last = NULL;
+            }
+            else {
+                dll_node_t *tmp = list->last;
+
+                list->last = list->last->prev;
+                list->last->next = NULL;
+                delete_ptr(tmp->data);
+                free(tmp);
+            }
+            list->size--;
+
+            return true;
+        }
+        else {
+            // error message
+            return false;
+        }
+    }
+    else {
+        // error message
+        return false;
+    }
+}
+
+bool dll_dispose(dll_t *list, void (delete_ptr*)(void*)) {
+    if (list != NULL) {
+        if (list->first != NULL) {
+            dll_node_t *to_delete;
+            dll_node_t *tmp = list->first;
+            while (tmp != NULL) {
+                to_delete = tmp;
+                tmp = tmp->next;
+
+                delete_ptr(to_delete->data);
+                free(to_delete);
+            }
+            free(list);
+            list->first = NULL;
+            list->last = NULL;
+        }
+        else {
+            // error message
+            return false;
+        }
+    }
+    else {
+        // error message
+        return false;
+    }
+}
