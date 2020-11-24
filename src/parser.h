@@ -56,7 +56,6 @@ typedef struct
 	char current_type;
 	bool allow_assign;
 	bool allow_func;
-	bool expect_one;
 	int result;
 } data_t;
 
