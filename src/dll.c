@@ -1,6 +1,6 @@
 #include "dll.h"
 
-dll_t* dll_init(dll_t *list) {
+dll_t* dll_init() {
     dll_t *new_list = (dll_t*)malloc(sizeof(dll_t));
     if (new_list == NULL) {
         // error message
@@ -14,7 +14,7 @@ dll_t* dll_init(dll_t *list) {
     return new_list;
 }
 
-void join_lists(dll_t *main_list, dll_t *secondary_list) {
+void dll_join_lists(dll_t *main_list, dll_t *secondary_list) {
     if (main_list != NULL && secondary_list != NULL) {
         main_list->last->next = secondary_list->first;
         secondary_list->first->prev = main_list->last;
@@ -52,16 +52,6 @@ void* dll_get(dll_t *list, int index) {
     }
 }
 
-void* dll_get_first(dll_t *list) {
-    if (list != NULL) {
-        return list->first->data;
-    }
-}
-
-void* dll_get_last(dll_t *list) {
-    return dll_get(list, list->size - 1);
-}
-
 bool dll_insert(dll_t *list, int index, void *data) {
     if (index >= 0) {
         if (list != NULL) {
@@ -81,7 +71,7 @@ bool dll_insert(dll_t *list, int index, void *data) {
                     for (int i = 0; i < index; i++) {
                         tmp = tmp->next;
                     }
-                    new_node->prev = tmp->prev
+                    new_node->prev = tmp->prev;
                     new_node->next = tmp;
                     tmp->prev = new_node;
 
@@ -108,7 +98,7 @@ bool dll_insert(dll_t *list, int index, void *data) {
 
 bool dll_insert_first(dll_t *list, void *data) {
     if (list != NULL) {
-        dll_node_t *newNode = (dll_node_t*)malloc(sizeof(dll_node_t));
+        dll_node_t *new_node = (dll_node_t*)malloc(sizeof(dll_node_t));
         if (new_node == NULL) {
             // error message
             return false;
