@@ -15,7 +15,7 @@ typedef struct dll_t {
 } dll_t;
 
 dll_t* dll_init();
-void dll_join_lists(dll_t*, dll_t*);
+bool dll_join_lists(dll_t*, dll_t*);
 
 void* dll_get(dll_t*, int);
 
@@ -27,5 +27,6 @@ bool dll_delete(dll_t*, int, void (*delete_ptr)(void*));
 bool dll_delete_first(dll_t*, void (*delete_ptr)(void*));
 bool dll_delete_last(dll_t*, void (*delete_ptr)(void*));
 
+bool dll_clear(dll_t*, void (*delete_ptr)(void*));
 bool dll_dispose(dll_t*, void (*delete_ptr)(void*));
 #endif

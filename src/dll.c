@@ -2,10 +2,7 @@
 
 dll_t* dll_init() {
     dll_t *new_list = (dll_t*)malloc(sizeof(dll_t));
-    if (new_list == NULL) {
-        // error message
-        return NULL;
-    }
+    if (new_list == NULL) return NULL;
 
     new_list->first = NULL;
     new_list->last = NULL;
@@ -14,17 +11,18 @@ dll_t* dll_init() {
     return new_list;
 }
 
-void dll_join_lists(dll_t *main_list, dll_t *secondary_list) {
+bool dll_join_lists(dll_t *main_list, dll_t *secondary_list) {
     if (main_list != NULL && secondary_list != NULL) {
         main_list->last->next = secondary_list->first;
         secondary_list->first->prev = main_list->last;
         main_list->last = secondary_list->last;
         free(secondary_list);
         secondary_list = NULL;
+
+        return true;
     }
-    else {
-        // error message
-    }
+
+    return false;
 }
 
 void* dll_get(dll_t *list, int index) {
@@ -39,17 +37,9 @@ void* dll_get(dll_t *list, int index) {
                 }
                 return tmp->data;
             }
-            else {
-                //error message
-            }
-        }
-        else {
-            // error message
         }
     }
-    else {
-        // error message
-    }
+
     return NULL;
 }
 
@@ -78,29 +68,16 @@ bool dll_insert(dll_t *list, int index, void *data) {
 
                 return true;
             }
-            else {
-                // error message
-                return false;
-            }
-        }
-        else {
-            // error message
-            return false;
         }
     }
-    else {
-        // error message
-        return false;
-    }
+
+    return false;
 }
 
 bool dll_insert_first(dll_t *list, void *data) {
     if (list != NULL) {
         dll_node_t *new_node = (dll_node_t*)malloc(sizeof(dll_node_t));
-        if (new_node == NULL) {
-            // error message
-            return false;
-        }
+        if (new_node == NULL) return false;
         new_node->data = data;
         new_node->prev = NULL;
 
@@ -118,18 +95,14 @@ bool dll_insert_first(dll_t *list, void *data) {
 
         return true;
     }
-    else {
-        // error message
-        return false;
-    }
+
+    return false;
 }
 bool dll_insert_last(dll_t *list, void *data) {
     if (list != NULL) {
         dll_node_t *new_node = (dll_node_t*)malloc(sizeof(dll_node_t));
-        if (new_node == NULL) {
-            // error message
-            return false;
-        }
+        if (new_node == NULL) return false;
+
         new_node->data = data;
         new_node->next = NULL;
 
@@ -147,10 +120,8 @@ bool dll_insert_last(dll_t *list, void *data) {
 
         return true;
     }
-    else {
-        // error message
-        return false;
-    }
+
+    return false;
 }
 
 bool dll_delete(dll_t *list, int index, void (*delete_ptr)(void*)) {
@@ -172,20 +143,10 @@ bool dll_delete(dll_t *list, int index, void (*delete_ptr)(void*)) {
 
                 return true;
             }
-            else {
-                // error message
-                return false;
-            }
-        }
-        else {
-            // error message
-            return false;
         }
     }
-    else {
-        // error message
-        return false;
-    }
+
+    return false;
 }
 
 bool dll_delete_first(dll_t *list, void (*delete_ptr)(void*)) {
@@ -209,15 +170,9 @@ bool dll_delete_first(dll_t *list, void (*delete_ptr)(void*)) {
 
             return true;
         }
-        else {
-            // error message
-            return false;
-        }
     }
-    else {
-        // error message
-        return false;
-    }
+
+    return false;
 }
 
 bool dll_delete_last(dll_t *list, void (*delete_ptr)(void*)) {
@@ -241,18 +196,12 @@ bool dll_delete_last(dll_t *list, void (*delete_ptr)(void*)) {
 
             return true;
         }
-        else {
-            // error message
-            return false;
-        }
     }
-    else {
-        // error message
-        return false;
-    }
+    
+    return false;
 }
 
-bool dll_dispose(dll_t *list, void (*delete_ptr)(void*)) {
+bool dll_clear(dll_t *list, void (*delete_ptr)(void*)) {
     if (list != NULL) {
         if (list->first != NULL) {
             dll_node_t *to_delete;
@@ -264,16 +213,24 @@ bool dll_dispose(dll_t *list, void (*delete_ptr)(void*)) {
                 delete_ptr(to_delete->data);
                 free(to_delete);
             }
-            free(list);
             list->first = NULL;
             list->last = NULL;
-        }
-        else {
-            // error message
+            list->size = 0;
+            
+            return true;
         }
     }
-    else {
-        // error message
+
+    return false;
+}
+
+bool dll_dispose(dll_t *list, void (*delete_ptr)(void*)) {
+    if (dll_clear(list, delete_ptr) == true) {
+        free(list);
+        list = NULL;
+
+        return true;
     }
+
     return false;
 }
