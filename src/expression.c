@@ -86,7 +86,10 @@ int expression(data_t *data)
 	stack sym_stack;
 	stack_init(&sym_stack);
 
-	data->current_type = data->vdata->type;
+	if (data->vdata == NULL)
+		data->current_type = 't';
+	else
+		data->current_type = data->vdata->type;
 	int r = start_of_expression(data, list, &sym_stack);
 	if (r == 0 && TKN.type != TOKEN_PAR_OPEN)
 	{

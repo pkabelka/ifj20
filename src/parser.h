@@ -23,6 +23,7 @@ typedef struct
 	string args_types;
 	string func_name;
 	string expected_return;
+	int line;
 } func_call_data_t;
 
 typedef struct
@@ -44,11 +45,10 @@ typedef struct
 
 	//for assignment
 	dll_t *assign_list;
-	string expected_types;
 	int nassigns;
 
-	stnode_ptr func_tabel; //BST of functins
-	stack var_tabel;	   //symbol tabel for variables (stack of BSTs)
+	stnode_ptr func_table; //BST of functins
+	stack var_table;	   //symbol table for variables (stack of BSTs)
 	stack calls;		   //stack of all function calls
 
 	stack aux; //stack for counting auxiliary variables
@@ -84,7 +84,7 @@ bool init_data(data_t *data);
 void dispose_data(data_t *data);
 
 /**
- * @brief Finds variable in symbol tabel
+ * @brief Finds variable in symbol table
  * 
  * @param data parser's data
  * @param str name of variable
