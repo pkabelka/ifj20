@@ -90,6 +90,7 @@ int expression(data_t *data)
 		data->current_type = 't';
 	else
 		data->current_type = data->vdata->type;
+
 	int r = start_of_expression(data, list, &sym_stack);
 	if (r == 0 && TKN.type != TOKEN_PAR_OPEN)
 	{
@@ -106,7 +107,8 @@ int expression(data_t *data)
 		}
 
 		//TODO: generate internal code and optimize
-		data->vdata->type = data->current_type;
+		if (data->vdata != NULL)
+			data->vdata->type = data->current_type;
 		//TODO: generate code
 	}
 
@@ -279,8 +281,7 @@ static int bracket_scope(data_t *data, dll_t *list, stack *sym_stack) //preferen
 		}
 
 		//pushing rest of operators
-		struct stack_el *elem = sym_stack->top;
-		while (elem != NULL)
+		while (sym_stack->top != NULL)
 		{
 			symbol_t *sym = malloc(sizeof(symbol_t));
 			sym->sym_type = SYM_OPERATOR;

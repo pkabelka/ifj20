@@ -41,6 +41,7 @@ func expression() (int, int) {
 	identifier := "69"
 	a := 100
 	a = 100 + 5
+	b := 20
 	a, b = 158 * 8 + (4 - 6), 12 * 3
 	a = ((((((b)))))) + (a)
 
@@ -101,7 +102,7 @@ func cycle() {
 
 	s := ""
 	for ; s != "esc" ; {
-		s = inputs()
+		s, _ = inputs()
 	}
 
 	for a, b := 0, 0; a + b < 100; a, b = a + 1, b + 2 {

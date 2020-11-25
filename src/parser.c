@@ -327,7 +327,10 @@ static int func_calling(data_t *data)
 			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, vd->type);
 			
 			if (TKN.type == TOKEN_PAR_CLOSE)
+			{
+				NEXT_TOKEN();
 				return 0;
+			}
 
 			APPLY_NEXT_RULE(func_calling)
 			return 0;
@@ -341,7 +344,10 @@ static int func_calling(data_t *data)
 			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, tkn_to_char(data->prev_token));
 			
 			if (TKN.type == TOKEN_PAR_CLOSE)
+			{
+				NEXT_TOKEN();
 				return 0;
+			}
 
 			APPLY_NEXT_RULE(func_calling)
 			return 0;
@@ -349,6 +355,7 @@ static int func_calling(data_t *data)
 	}
 	else if (TKN.type == TOKEN_PAR_CLOSE && data->prev_token.type != TOKEN_COMMA)
 	{
+		NEXT_TOKEN()
 		return 0;
 	}
 	return ERR_SYNTAX;
@@ -381,7 +388,7 @@ static int _scope_(data_t *data)
 				if (TKN.type == TOKEN_PAR_OPEN)
 				{
 					APPLY_RULE(call_func)
-					EXPECT_NEXT_TOKEN(TOKEN_EOL)
+					EXPECT_TOKEN(TOKEN_EOL)
 				}
 				else
 					return ERR_SYNTAX;
@@ -440,6 +447,7 @@ static int assignment(data_t *data)
 
 	data->nassigns = 0;
 	data->allow_func = false;
+	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
 
@@ -465,6 +473,7 @@ static int reassignment(data_t *data)
 
 	data->nassigns = 0;
 	data->allow_func = true;
+	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
 
@@ -477,17 +486,24 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 	data->vdata = (var_data_t*)node->data;
 	APPLY_RULE(expression)
 	data->nassigns += 1;
+
+	if (data->fix_call && data->nassigns == 2) //fix last call
+	{
+		func_call_data_t *call = (func_call_data_t*)data->calls.top->data;
+		char t = call->expected_return.str[0];
+		str_clear(&call->expected_return);
+		str_add(&call->expected_return, t);
+	}
+
 	if (TKN.type == TOKEN_COMMA)
 	{
 		NEXT_TOKEN()
 		if (node->next == NULL) //L < R
 			return ERR_SEMANTIC_FUNC_PARAMS;
 
-		NEXT_TOKEN()
 		if (TKN.type == TOKEN_EOL)
-			return 0;
-		
-		NEXT_TOKEN();
+			return ERR_SYNTAX;
+
 		return end_of_assignment(data, node->next); //assigning next value
 	}
 	else if (TKN.type == TOKEN_EOL ||
@@ -496,21 +512,15 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 		return 0;
 	else if (TKN.type == TOKEN_PAR_OPEN)
 	{
-		if (data->nassigns == 2) //fix last call
-		{
-			func_call_data_t *call = (func_call_data_t*)data->calls.top->data;
-			char t = call->expected_return.str[0];
-			str_clear(&call->expected_return);
-			str_add(&call->expected_return, t);
-		}
-
 		APPLY_RULE(call_func)
 		if (data->nassigns == 1)
+		{
 			set_return_types(data, NULL);
+			data->fix_call = true;
+		}
 		else
 			set_return_types(data, node);
 		
-		NEXT_TOKEN()
 		if (TKN.type == TOKEN_EOL)
 			return 0;
 		
@@ -618,7 +628,7 @@ static int cycle(data_t *data)
 		APPLY_RULE(list_of_vars)
 		if (TKN.type == TOKEN_SEMICOLON)
 		{
-			APPLY_RULE(condition)
+			APPLY_NEXT_RULE(condition)
 			if (TKN.type == TOKEN_SEMICOLON)
 			{
 				APPLY_NEXT_RULE(end_of_cycle)
@@ -737,7 +747,7 @@ static int next_returned_val(data_t *data, unsigned int n)
 	}
 	else if (TKN.type == TOKEN_EOL)
 	{
-		if (data->fdata->ret_val_types.len != n)
+		if (data->fdata->ret_val_types.len != n + 1)
 			return ERR_SEMANTIC_FUNC_PARAMS; //return too few variable
 		return 0;
 	}

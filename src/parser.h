@@ -56,6 +56,7 @@ typedef struct
 	char current_type;
 	bool allow_assign;
 	bool allow_func;
+	bool fix_call;
 	int result;
 } data_t;
 
