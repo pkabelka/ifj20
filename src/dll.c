@@ -13,8 +13,21 @@ dll_t* dll_init() {
 
 bool dll_join_lists(dll_t *main_list, dll_t *secondary_list) {
     if (main_list != NULL && secondary_list != NULL) {
-        main_list->last->next = secondary_list->first;
-        secondary_list->first->prev = main_list->last;
+        if (main_list->first == NULL)
+        {
+            main_list->first = secondary_list->first;
+        }
+        else
+        {
+            main_list->last->next = secondary_list->first;
+        }
+        
+        if (secondary_list->first != NULL)
+        {
+            secondary_list->first->prev = main_list->last;
+        }
+
+        
         main_list->last = secondary_list->last;
         free(secondary_list);
         secondary_list = NULL;
