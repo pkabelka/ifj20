@@ -159,18 +159,18 @@ static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 
 static int end_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 {
+	if (TKN.type != TOKEN_PAR_OPEN && data->prev_token.type == TOKEN_IDENTIFIER)
+	{
+		data->result = push_id(data, data->prev_token, list);
+		CHECK_RESULT()
+	}
+
 	switch (TKN.type)
 	{
 		//arithmetic operators
 		case TOKEN_ADD: case TOKEN_SUB:  case TOKEN_MUL:  case TOKEN_DIV:
 			if (data->current_type == 's' && TKN.type != TOKEN_ADD) //unallowed operations with string
 				return ERR_SEMANTIC_TYPE_COMPAT;
-
-			if (data->prev_token.type == TOKEN_IDENTIFIER)
-			{
-				data->result = push_id(data, data->prev_token, list);
-				CHECK_RESULT()
-			}
 
 			data->result = push_o(TKN, list, sym_stack);
 			CHECK_RESULT()

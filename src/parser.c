@@ -89,7 +89,7 @@ bool init_func_data(void **ptr)
 	bool res = true;
 	res = res && str_init(&(*fd)->args_types);
 	res = res && str_init(&(*fd)->ret_val_types);
-	(*fd)->nargs = false;
+	(*fd)->used_return = false;
 	return res;
 }
 
@@ -162,6 +162,9 @@ int parse(data_t *data)
 			APPLY_NEXT_RULE(func_header)
 			APPLY_NEXT_RULE(_scope_);
 			APPLY_RULE(close_scope)
+
+			if (!data->fdata->used_return)
+				return ERR_SEMANTIC_OTHER;
 		}
 		else if (TKN.type != TOKEN_EOL && TKN.type != TOKEN_EOF)
 			return ERR_SYNTAX;
@@ -196,8 +199,11 @@ static int func_header(data_t *data)
 	}
 	
 	NEXT_TOKEN()
-	if (TKN.type == TOKEN_CURLY_OPEN) //start of body
+	if (TKN.type == TOKEN_CURLY_OPEN) //start of body - empty return list
+	{
+		data->fdata->used_return = true; // no need for using return
 		return 0;
+	}
 	else if (TKN.type == TOKEN_PAR_OPEN) //return vals
 	{
 		APPLY_NEXT_RULE(func_return_vals)
@@ -403,6 +409,7 @@ static int _scope_(data_t *data)
 			}
 			else if (TKN.attr.kw == KW_RETURN)
 			{
+				data->fdata->used_return = true;
 				APPLY_NEXT_RULE(returned_vals)
 			}
 			else
@@ -828,7 +835,6 @@ static bool add_inter_func_to_table(data_t *data)
 	ptr = symtable_insert(&data->func_table, "print", &err);
 	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
 	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "r");
-	((func_data_t*)ptr->data)->nargs = true;
 	if (!res) return false;
 	//int2float
 	ptr = symtable_insert(&data->func_table, "int2float", &err);
@@ -887,10 +893,10 @@ static int check_func_calls(data_t *data)
 		}
 		else
 		{
-			if (!compare_list_of_types(fcd->args_types, fdata->args_types))
+			if (!compare_list_of_types(fcd->args_types, fdata->args_types)) //checking arguments
 				return ERR_SEMANTIC_FUNC_PARAMS;
 
-			if (!compare_list_of_types(fcd->expected_return, fdata->ret_val_types))
+			if (!compare_list_of_types(fcd->expected_return, fdata->ret_val_types)) //checking returned types
 				return ERR_SEMANTIC_FUNC_PARAMS;
 		}
 		elem = elem->next;

@@ -15,7 +15,7 @@ typedef struct
 {
 	string args_types;
 	string ret_val_types;
-	bool nargs;
+	bool used_return;
 } func_data_t;
 
 typedef struct
