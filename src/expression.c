@@ -74,7 +74,7 @@ void free_symbol(void *ptr)
 	}
 	else
 		free(sym->data);
-	free(sym);
+	//free(sym);
 }
 
 int expression(data_t *data)
@@ -86,12 +86,12 @@ int expression(data_t *data)
 	stack sym_stack;
 	stack_init(&sym_stack);
 
+	data->current_type = data->vdata->type;
 	int r = start_of_expression(data, list, &sym_stack);
 	if (r == 0 && TKN.type != TOKEN_PAR_OPEN)
 	{
 		//pushing rest of operators
-		struct stack_el *elem = sym_stack.top;
-		while (elem != NULL)
+		while (sym_stack.top != NULL)
 		{
 			symbol_t *sym = malloc(sizeof(symbol_t));
 			sym->sym_type = SYM_OPERATOR;
@@ -176,6 +176,10 @@ static int end_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 
 		//end of expression
 		case TOKEN_PAR_CLOSE: case TOKEN_COMMA: case TOKEN_EOL: case TOKEN_CURLY_OPEN: case TOKEN_SEMICOLON:
+			return 0;
+		case TOKEN_EQUAL: case TOKEN_NOT_EQUAL: 
+		case TOKEN_LESS_OR_EQUAL: case TOKEN_LESS_THAN:
+		case TOKEN_GREATER_OR_EQUAL: case TOKEN_GREATER_THAN:
 			return 0;
 
 		//func

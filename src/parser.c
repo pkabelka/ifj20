@@ -3,7 +3,6 @@
  * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
  */
 
-#include <math.h>
 #include "parser.h"
 #include "scanner.h"
 #include "str.h"
@@ -25,6 +24,7 @@ static int func_return_vals(data_t *data);
 static int var_type(data_t *data);
 static int call_func(data_t *data);
 static int func_calling(data_t *data);
+static int _scope_(data_t *data);
 static int scope(data_t *data);
 static int assignment(data_t *data);
 static int reassignment(data_t *data);
@@ -42,7 +42,8 @@ static int end_of_assignment(data_t *data, dll_node_t *node);
 static int check_ret_vals(data_t *data, char type, unsigned int n);
 static int check_func_calls(data_t *data);
 
-static const char* kw_to_char(keyword kw);
+static char* get_name(keyword kw);
+static char kw_to_char(keyword kw);
 static bool add_inter_func_to_table(data_t *data);
 static char tkn_to_char(token token);
 static bool add_to_assign_list(data_t *data, token token);
@@ -51,7 +52,7 @@ static bool compare_list_of_types(string expected, string sent);
 static var_data_t* create_aux_var(data_t *data);
 
 bool init_func_data(void **ptr);
-bool init_func_call_data(func_call_data_t **fcd);
+func_call_data_t* init_func_call_data();
 void free_func_data(void *ptr);
 void free_local_scope(void *ptr);
 void free_func_call_data(void *ptr);
@@ -94,15 +95,17 @@ bool init_func_data(void **ptr)
 	return res;
 }
 
-bool init_func_call_data(func_call_data_t **fcd)
+func_call_data_t* init_func_call_data()
 {
-	*fcd = malloc(sizeof(func_call_data_t));
-	if (*fcd == NULL) return false;
+	func_call_data_t *fcd = malloc(sizeof(func_call_data_t));
+	if (fcd == NULL) return NULL;
 	bool res = true;
-	res = res && str_init(&(*fcd)->args_types);
-	res = res && str_init(&(*fcd)->func_name);
-	res = res && str_init(&(*fcd)->expected_return);
-	return res;
+	res = res && str_init(&fcd->args_types);
+	res = res && str_init(&fcd->func_name);
+	res = res && str_init(&fcd->expected_return);
+	if (!res) 
+		return NULL;
+	return fcd;
 }
 
 void free_func_call_data(void *ptr)
@@ -124,9 +127,8 @@ void free_func_data(void *ptr)
 
 void free_local_scope(void *ptr)
 {
-	stnode_ptr node = (stnode_ptr)ptr;
-	free_var_data(node->data);
-	free(ptr);
+	stnode_ptr *node = (stnode_ptr*)ptr;
+	symtable_dispose(node, free_var_data);
 }
 
 void free_var_data(void *ptr)
@@ -158,12 +160,15 @@ int parse(data_t *data)
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_FUNC)
 		{
+			APPLY_RULE(new_scope)
 			APPLY_NEXT_RULE(func_header)
-			APPLY_NEXT_RULE(scope)
+			APPLY_NEXT_RULE(_scope_);
+			APPLY_RULE(close_scope)
 		}
 		else if (TKN.type != TOKEN_EOL && TKN.type != TOKEN_EOF)
 			return ERR_SYNTAX;
 	}
+
 	return check_func_calls(data);
 }
 
@@ -206,7 +211,7 @@ static int func_header(data_t *data)
 	{
 		if (TKN.attr.kw == KW_INT || TKN.attr.kw == KW_STRING || TKN.attr.kw == KW_FLOAT64) //one returned value without ()
 		{
-			str_add_const(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
+			str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
 			NEXT_TOKEN()
 			if (TKN.type == TOKEN_CURLY_OPEN) //starts of body
 				return 0;
@@ -220,7 +225,27 @@ static int func_args(data_t *data)
 	if (TKN.type == TOKEN_IDENTIFIER) //one or more
 	{
 		APPLY_NEXT_RULE(var_type)
-		str_add_const(&data->fdata->args_types, kw_to_char(TKN.attr.kw));
+		//add arg type to header
+		str_add(&data->fdata->args_types, kw_to_char(TKN.attr.kw));
+		//create var
+		var_data_t *vd = malloc(sizeof(var_data_t));
+		if (vd == NULL)
+			return ERR_INTERNAL;
+
+		vd->type = kw_to_char(TKN.attr.kw);
+		if (!str_init(&vd->name))
+			return ERR_INTERNAL;
+
+		char *name = data->prev_token.attr.str->str;
+		str_add_const(&vd->name, name);
+		
+		//add var into local scope
+		bool err;
+		stnode_ptr ptr = symtable_insert((stnode_ptr*)data->var_tabel.top->data, name, &err);
+		if (ptr == NULL)
+			return ERR_INTERNAL;
+		ptr->data = vd;
+
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_COMMA)
 		{
@@ -236,7 +261,7 @@ static int func_args(data_t *data)
 static int func_return_vals(data_t *data)
 {
 	APPLY_RULE(var_type)
-	str_add_const(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
+	str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE)
 		return 0;
@@ -272,12 +297,17 @@ static int var_type(data_t *data)
 
 static int call_func(data_t *data)
 {
-	func_call_data_t *call;
-	if (!init_func_call_data(&call))
+	func_call_data_t *call = init_func_call_data();
+	if (call == NULL)
 		return ERR_INTERNAL;
 	
 	str_add(&call->expected_return, 'r');
-	str_add_const(&call->func_name, TKN.attr.str->str);
+	char *name;
+	if (data->prev_token.type == TOKEN_KEYWORD)
+		name = get_name(data->prev_token.attr.kw);
+	else
+		name = data->prev_token.attr.str->str;
+	str_add_const(&call->func_name, name);
 	if (!stack_push(&data->calls, call)) 
 		return ERR_INTERNAL;
 
@@ -296,6 +326,10 @@ static int func_calling(data_t *data)
 			if (vd == NULL) //used undefined variable
 				return ERR_SEMANTIC_UNDEF_REDEF;
 			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, vd->type);
+			
+			if (TKN.type == TOKEN_PAR_CLOSE)
+				return 0;
+
 			APPLY_NEXT_RULE(func_calling)
 			return 0;
 		}
@@ -306,6 +340,10 @@ static int func_calling(data_t *data)
 		if (TKN.type == TOKEN_COMMA || TKN.type == TOKEN_PAR_CLOSE) //constants as func parameter
 		{
 			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, tkn_to_char(data->prev_token));
+			
+			if (TKN.type == TOKEN_PAR_CLOSE)
+				return 0;
+
 			APPLY_NEXT_RULE(func_calling)
 			return 0;
 		}
@@ -317,10 +355,8 @@ static int func_calling(data_t *data)
 	return ERR_SYNTAX;
 }
 
-static int scope(data_t *data)
+static int _scope_(data_t *data)
 {
-	APPLY_RULE(new_scope)
-
 	if (data->prev_token.type == TOKEN_CURLY_OPEN && TKN.type == TOKEN_CURLY_CLOSE)
 		return false;
 
@@ -345,7 +381,7 @@ static int scope(data_t *data)
 				NEXT_TOKEN()
 				if (TKN.type == TOKEN_PAR_OPEN)
 				{
-					APPLY_NEXT_RULE(call_func)
+					APPLY_RULE(call_func)
 					EXPECT_NEXT_TOKEN(TOKEN_EOL)
 				}
 				else
@@ -369,7 +405,13 @@ static int scope(data_t *data)
 		else
 			return ERR_SYNTAX;
 	}
+	return 0;
+}
 
+static int scope(data_t *data)
+{
+	APPLY_RULE(new_scope)
+	APPLY_RULE(_scope_)
 	APPLY_RULE(close_scope)
 	return 0;
 }
@@ -385,11 +427,13 @@ static int assignment(data_t *data)
 			return ERR_SEMANTIC_UNDEF_REDEF; //variable alreay exist in current scope
 
 		bool err;
-		stnode_ptr ptr = symtable_insert(data->var_tabel.top->data, assign->name.str, &err);
+		stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_tabel.top->data), assign->name.str, &err);
 		if (ptr == NULL)
 			return ERR_INTERNAL;
 
+		assign->type = 't';
 		ptr->data = assign;
+
 		node = node->next;
 	}
 
@@ -398,11 +442,7 @@ static int assignment(data_t *data)
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
 
-	//dispose and init new instead of clear
-	dll_dispose(data->assign_list, free);
-	data->assign_list = dll_init();
-	if (data->assign_list == NULL)
-		return ERR_INTERNAL;
+	dll_clear(data->assign_list, stack_nofree);
 	return 0;
 }
 
@@ -420,7 +460,11 @@ static int reassignment(data_t *data)
 
 	data->nassigns = 0;
 	data->allow_func = true;
-	return end_of_assignment(data, data->assign_list->first);
+	data->result = end_of_assignment(data, data->assign_list->first);
+	CHECK_RESULT()
+
+	dll_clear(data->assign_list, stack_nofree);
+	return 0;
 }
 
 static int end_of_assignment(data_t *data, dll_node_t *node)
@@ -433,6 +477,12 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 		NEXT_TOKEN()
 		if (node->next == NULL) //L < R
 			return ERR_SEMANTIC_FUNC_PARAMS;
+
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_EOL)
+			return 0;
+		
+		NEXT_TOKEN();
 		return end_of_assignment(data, node->next); //assigning next value
 	}
 	else if (TKN.type == TOKEN_EOL ||
@@ -446,6 +496,12 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 			set_return_types(data, NULL);
 		else
 			set_return_types(data, node);
+		
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_EOL)
+			return 0;
+		
+		NEXT_TOKEN();
 		return end_of_assignment(data, node); //assigning still current value
 	}
 	return ERR_SYNTAX;
@@ -502,7 +558,7 @@ static int func_or_list_of_vars(data_t *data)
 {
 	if (TKN.type == TOKEN_PAR_OPEN && data->prev_token.type == TOKEN_IDENTIFIER) //func
 	{
-		APPLY_NEXT_RULE(call_func)
+		APPLY_RULE(call_func)
 		return 0;
 	}
 	else
@@ -590,7 +646,6 @@ static int condition(data_t *data)
 
 	data->allow_func = false;
 	APPLY_RULE(expression)
-	NEXT_TOKEN()
 	switch (TKN.type)
 	{
 		case TOKEN_EQUAL: case TOKEN_NOT_EQUAL: 
@@ -676,8 +731,14 @@ static int next_returned_val(data_t *data, unsigned int n)
 
 static int new_scope(data_t *data)
 {
-	stnode_ptr local_scope = malloc(sizeof(struct stnode));
-	stack_push(&data->var_tabel, &local_scope);
+	stnode_ptr *local_scope = malloc(sizeof(stnode_ptr));
+	if (local_scope == NULL)
+		return ERR_INTERNAL;
+
+	symtable_init(local_scope);
+	if (!stack_push(&data->var_tabel, local_scope))
+		return ERR_INTERNAL;
+
 	data->allow_assign = true;
 
 	int *zero = malloc(sizeof(int));
@@ -707,96 +768,96 @@ bool is_inter_func(token token)
 	return false;
 }
 
-static const char* kw_to_char(keyword kw)
+static char kw_to_char(keyword kw)
 {
 	if (kw == KW_INT)
-		return "i";
+		return 'i';
 	else if (kw == KW_STRING)
-		return "s";
+		return 's';
 	else if (kw == KW_FLOAT64)
-		return "f";
+		return 'f';
 	else
-		return "0";
+		return '0';
 }
 
 static bool add_inter_func_to_table(data_t *data)
 {
-	bool err;
+	bool err, res = true;
 	stnode_ptr ptr;
 	//inputs
-	ptr = symtable_insert(&data->func_tabel, "intputs", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
-	if (!err) return false;
+	ptr = symtable_insert(&data->func_tabel, "inputs", &err);
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
+	if (!res) return false;
 	//inputi
-	ptr = symtable_insert(&data->func_tabel, "intputi", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "ii");
-	if (!err) return false;
+	ptr = symtable_insert(&data->func_tabel, "inputi", &err);
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "ii");
+	if (!res) return false;
 	//inputf
-	ptr = symtable_insert(&data->func_tabel, "intputf", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "fi");
-	if (!err) return false;
+	ptr = symtable_insert(&data->func_tabel, "inputf", &err);
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "fi");
+	if (!res) return false;
 	//print
 	ptr = symtable_insert(&data->func_tabel, "print", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "t");
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "r");
 	((func_data_t*)ptr->data)->nargs = true;
-	if (!err) return false;
+	if (!res) return false;
 	//int2float
 	ptr = symtable_insert(&data->func_tabel, "int2float", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "i");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "f");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "i");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "f");
+	if (!res) return false;
 	//float2int
 	ptr = symtable_insert(&data->func_tabel, "float2int", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "f");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "i");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "f");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "i");
+	if (!res) return false;
 	//len
 	ptr = symtable_insert(&data->func_tabel, "len", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "s");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "i");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "s");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "i");
+	if (!res) return false;
 	//substr
 	ptr = symtable_insert(&data->func_tabel, "substr", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "sii");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "sii");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
+	if (!res) return false;
 	//ord
 	ptr = symtable_insert(&data->func_tabel, "ord", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "si");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "ii");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "si");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "ii");
+	if (!res) return false;
 	//chr
 	ptr = symtable_insert(&data->func_tabel, "chr", &err);
-	if (err || !init_func_data(&ptr->data)) return false;
-	err = err && str_add_const(&((func_data_t*)ptr->data)->args_types, "i");
-	err = err && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
-	if (!err) return false;
+	if (ptr == NULL || !init_func_data(&ptr->data)) return false;
+	res = res && str_add_const(&((func_data_t*)ptr->data)->args_types, "i");
+	res = res && str_add_const(&((func_data_t*)ptr->data)->ret_val_types, "si");
+	if (!res) return false;
 	return true;
 }
 
-static int check_func_calls(data_t *data_t)
+static int check_func_calls(data_t *data)
 {
-	struct stack_el *elem = data_t->calls.top;
+	struct stack_el *elem = data->calls.top;
 	while (elem != NULL)
 	{
 		func_call_data_t *fcd = (func_call_data_t*)elem->data;
-		stnode_ptr ptr = symtable_search(data_t->func_tabel, fcd->func_name.str);
+		stnode_ptr ptr = symtable_search(data->func_tabel, fcd->func_name.str);
 		if (ptr == NULL) //called funcion does not exist
 			return ERR_SEMANTIC_UNDEF_REDEF;
 
 		func_data_t *fdata = (func_data_t*)ptr->data;
-		if (str_cmp_const(&fcd->func_name, "print"))
+		if (str_cmp_const(&fcd->func_name, "print") == 0)
 		{
-			if (fcd->expected_return.len > 0)
+			if (str_cmp_const(&fcd->expected_return, "r") != 0)
 				return ERR_SEMANTIC_FUNC_PARAMS;
 		}
 		else
@@ -817,8 +878,8 @@ var_data_t* find_var(data_t *data, const char *name, bool local)
 	struct stack_el *elem = data->var_tabel.top;
 	while (elem != NULL)
 	{
-		stnode_ptr bst = (stnode_ptr)elem->data;
-		stnode_ptr var_ptr = symtable_search(bst, name);
+		stnode_ptr *bst = (stnode_ptr*)elem->data;
+		stnode_ptr var_ptr = symtable_search(*bst, name);
 		if (var_ptr != NULL) //var find in this scope
 			return (var_data_t*)(var_ptr->data);
 		else if (local)
@@ -856,7 +917,7 @@ static bool add_to_assign_list(data_t *data, token token)
 
 static void set_return_types(data_t *data, dll_node_t *node)
 {
-	func_call_data_t *call = (func_call_data_t*)data->calls.top;
+	func_call_data_t *call = (func_call_data_t*)data->calls.top->data;
 	str_clear(&call->expected_return);
 	if (node == NULL)
 	{
@@ -864,7 +925,8 @@ static void set_return_types(data_t *data, dll_node_t *node)
 		while (node != NULL)
 		{
 			var_data_t *vd = (var_data_t*)node->data;
-			str_add(&call->expected_return, vd->type);
+			var_data_t *fvd = find_var(data, vd->name.str, false);
+			str_add(&call->expected_return, fvd->type);
 			node = node->next;
 		}
 	}
@@ -882,14 +944,16 @@ static var_data_t* create_aux_var(data_t *data)
 		return NULL;
 
 	vd->type = 't';
+	str_init(&vd->name);
 
-	int n = *(int*)data->aux.top;
-	char *name = malloc(sizeof(char) * (5 + (int)log10(n)));
+	int n = *(int*)data->aux.top->data;
+	int len = (6 + ((n - n % 2) / 10));
+	char *name = malloc(sizeof(char) * len);
 	sprintf(name, "@aux_%d", n);
 	str_add_const(&vd->name, name);
-	*(int*)data->aux.top += 1;
+	*(int*)data->aux.top->data += 1;
 
-	free(name);
+	//free(name); probably not neede .... causing seg fault
 	return vd;
 }
 
@@ -918,7 +982,11 @@ static int check_ret_vals(data_t *data, char type, unsigned int n)
 }
 
 static bool compare_list_of_types(string expected, string sent)
-{
+{	
+	if ((expected.len > 0 && expected.str[0] == 'r') //not assigning data from function
+		/*(sent.len > 0 && sent.str[0] == 'r')*/)
+		return true;
+
 	if (expected.len != sent.len)
 		return false; //bad argument count
 
@@ -929,4 +997,22 @@ static bool compare_list_of_types(string expected, string sent)
 	}
 
 	return true;
+}
+
+static char* get_name(keyword kw)
+{
+	switch (kw)
+	{
+		case KW_CHR: return "chr";
+		case KW_FLOAT2INT: return "float2int";
+		case KW_INPUTF: return "inputf";
+		case KW_INPUTI: return "inputi";
+		case KW_INPUTS: return "inputs";
+		case KW_INT2FLOAT: return "int2float";
+		case KW_LEN: return "len";
+		case KW_ORD: return "ord";
+		case KW_PRINT: return "print";
+		case KW_SUBSTR: return "substr";
+		default: return "";
+	}
 }
