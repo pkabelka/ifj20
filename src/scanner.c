@@ -433,55 +433,58 @@ int get_next_token(token *tok)
                 break;
 
             case SCANNER_INT_BASE:
-                if (c == 'b' || c == 'B')
+                switch (c)
                 {
-                    int_base = 2;
-                    state = SCANNER_INT_BASE_NUM_FIRST;
-                }
-                else if (c == 'o' || c == 'O')
-                {
-                    int_base = 8;
-                    state = SCANNER_INT_BASE_NUM_FIRST;
-                }
-                else if (c == 'x' || c == 'X')
-                {
-                    int_base = 16;
-                    state = SCANNER_INT_BASE_NUM_FIRST;
-                }
-                else if (isdigit(c))
-                {
-                    int_base = 8;
-                    state = SCANNER_INT_BASE_NUM_OTHER;
-                    if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
-                }
-                else if (c == '.')
-                {
-                    state = SCANNER_DECIMAL_POINT;
-                    if (!str_add(&str, '0')) { return cleanup(&str, ERR_INTERNAL); }
-                    if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
-                }
-                else if (c == '_')
-                {
-                    int_base = 8;
-                    ungetc(c, stdin);
-                    state = SCANNER_INT_BASE_NUM_FIRST;
-                }
-                else if (c == 'e' || c == 'E')
-                {
-                    state = SCANNER_FLOAT64_EXPONENT;
-                    if (!str_add(&str, '0')) { return cleanup(&str, ERR_INTERNAL); }
-                    if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
-                }
-                else
-                {
-                    tok->type = TOKEN_INT;
-                    tok->attr.int_val = 0;
-                    return cleanup_c(&str, SCANNER_SUCCESS, c);
+                    case 'b': case 'B':
+                        int_base = 2;
+                        state = SCANNER_INT_BASE_NUM_FIRST;
+                        break;
+                    case 'o': case 'O':
+                        int_base = 8;
+                        state = SCANNER_INT_BASE_NUM_FIRST;
+                        break;
+                    case 'x': case 'X':
+                        int_base = 16;
+                        state = SCANNER_INT_BASE_NUM_FIRST;
+                        break;
+                    case '0':
+                        return cleanup(&str, ERR_LEX_STRUCTURE);
+                    // rest of isdigit(c)
+                    case '1':case '2':case '3':case '4':case '5':
+                    case '6':case '7':case '8':case '9':
+                        int_base = 8;
+                        state = SCANNER_INT_BASE_NUM_OTHER;
+                        if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
+                        break;
+                    case '.':
+                        state = SCANNER_DECIMAL_POINT;
+                        if (!str_add(&str, '0')) { return cleanup(&str, ERR_INTERNAL); }
+                        if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
+                        break;
+                    case '_':
+                        int_base = 8;
+                        ungetc(c, stdin);
+                        state = SCANNER_INT_BASE_NUM_FIRST;
+                        break;
+                    case 'e': case 'E':
+                        state = SCANNER_FLOAT64_EXPONENT;
+                        if (!str_add(&str, '0')) { return cleanup(&str, ERR_INTERNAL); }
+                        if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
+                        break;
+                    default:
+                        tok->type = TOKEN_INT;
+                        tok->attr.int_val = 0;
+                        return cleanup_c(&str, SCANNER_SUCCESS, c);
+                        break;
                 }
                 break;
 
             case SCANNER_INT_BASE_NUM_FIRST:
-                if (isdigit(c) || (int_base == 16 && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))))
+                if (c == '0')
+                {
+                    return cleanup(&str, ERR_LEX_STRUCTURE);
+                }
+                else if (isdigit(c) || (int_base == 16 && ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))))
                 {
                     state = SCANNER_INT_BASE_NUM_OTHER;
                     if (!str_add(&str, c)) { return cleanup(&str, ERR_INTERNAL); }
