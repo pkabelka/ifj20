@@ -98,18 +98,30 @@ int expression(data_t *data)
 		while (sym_stack.top != NULL)
 		{
 			symbol_t *sym = malloc(sizeof(symbol_t));
+			if (sym == NULL)
+			{
+				r = ERR_INTERNAL;
+				break;
+			}
+
 			sym->sym_type = SYM_OPERATOR;
 			sym->data = sym_stack.top->data;
 			if (!dll_insert_last(list, sym))
-				return ERR_INTERNAL;
+			{
+				r = ERR_INTERNAL;
+				break;
+			}
 
 			stack_pop(&sym_stack, stack_nofree);
 		}
 
-		//TODO: generate internal code and optimize
-		if (data->vdata != NULL)
-			data->vdata->type = data->current_type;
-		//TODO: generate code
+		if (r == 0)
+		{
+			//TODO: generate internal code and optimize
+			if (data->vdata != NULL)
+				data->vdata->type = data->current_type;
+			//TODO: generate code
+		}
 	}
 
 	stack_dispose(&sym_stack, free);
@@ -141,7 +153,11 @@ static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 			return ERR_INTERNAL;
 
 		data->result = bracket_scope(data, sub_list, sym_stack);
-		CHECK_RESULT()
+		if (data->result != 0)
+		{
+			dll_dispose(sub_list, free_symbol);
+			return data->result;
+		}
 
 		dll_join_lists(list, sub_list);
 		
@@ -206,15 +222,22 @@ static int push_id(data_t *data, token token, dll_t *list)
 		return ERR_SEMANTIC_UNDEF_REDEF;
 
 	symbol_t *sym = malloc(sizeof(symbol_t));
+	if (sym == NULL) return ERR_INTERNAL;
 	sym->sym_type = SYM_VAR;
 	sym->data = var;
 
 	data->current_type = compare_types(var->type, data->current_type);
 	if (data->current_type == '0')
+	{
+		free_symbol(sym);
 		return ERR_SEMANTIC_TYPE_COMPAT;
+	}
 
 	if (!dll_insert_last(list, sym))
+	{
+		free_symbol(sym);
 		return ERR_INTERNAL;
+	}
 	return 0;
 }
 
@@ -229,7 +252,10 @@ static int push_const(data_t *data, token token, dll_t *list)
 		sym->sym_type = SYM_INT;
 		sym->data = malloc(sizeof(int));
 		if (sym->data == NULL)
+		{
+			free(sym);
 			return ERR_INTERNAL;
+		}
 
 		*(int*)sym->data = token.attr.int_val;
 		data->current_type = compare_types('i', data->current_type);
@@ -239,7 +265,10 @@ static int push_const(data_t *data, token token, dll_t *list)
 		sym->sym_type = SYM_FLOAT;
 		sym->data = malloc(sizeof(float));
 		if (sym->data == NULL)
+		{
+			free(sym);
 			return ERR_INTERNAL;
+		}
 
 		*(float*)sym->data = token.attr.float64_val;
 		data->current_type = compare_types('f', data->current_type);
@@ -252,20 +281,33 @@ static int push_const(data_t *data, token token, dll_t *list)
 			return ERR_INTERNAL;
 
 		if (!str_init(str))
+		{
+			free(str);
+			free(sym);
 			return ERR_INTERNAL;
+		}
 
 		if (!str_add_const(str, token.attr.str->str))
+		{
+			free_symbol(sym);
 			return ERR_INTERNAL;
+		}
 
 		sym->data = str;
 		data->current_type = compare_types('s', data->current_type);
 	}
 
 	if (data->current_type == '0')
+	{
+		free_symbol(sym);
 		return ERR_SEMANTIC_TYPE_COMPAT;
+	}
 
 	if (!dll_insert_last(list, sym))
+	{
+		free_symbol(sym);
 		return ERR_INTERNAL;
+	}
 	return 0;
 }
 
@@ -284,9 +326,18 @@ static int bracket_scope(data_t *data, dll_t *list, stack *sym_stack) //preferen
 		while (sym_stack->top != NULL)
 		{
 			symbol_t *sym = malloc(sizeof(symbol_t));
+			if (sym == NULL) 
+				return ERR_INTERNAL;
+
 			sym->sym_type = SYM_OPERATOR;
 			sym->data = sym_stack->top->data;
-			dll_insert_last(list, sym);
+
+			if (!dll_insert_last(list, sym))
+			{
+				free_symbol(sym);
+				return ERR_INTERNAL;
+			}
+
 			stack_pop(sym_stack, stack_nofree);
 		}
 		return 0;
@@ -315,17 +366,27 @@ static int push_o(token token, dll_t *list, stack *sym_stack)
 	{
 		symbol_t *sym = malloc(sizeof(symbol_t));
 		if (sym == NULL)
+		{
+			free(ot);
 			return ERR_INTERNAL;
+		}
 
 		sym->sym_type = SYM_OPERATOR;
 		sym->data = sym_stack->top->data;
 		if (!dll_insert_last(list, sym))
+		{
+			free(ot);
+			free_symbol(sym);
 			return ERR_INTERNAL;
+		}
 			
 		stack_pop(sym_stack, stack_nofree);
 	}
 
 	if (!stack_push(sym_stack, ot))
+	{
+		free(ot);
 		return ERR_INTERNAL;
+	}
 	return 0;
 }
