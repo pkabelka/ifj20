@@ -232,6 +232,7 @@ bool dll_clear(dll_t *list, void (*delete_ptr)(void*)) {
             
             return true;
         }
+        return true;
     }
 
     return false;
