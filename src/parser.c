@@ -79,6 +79,7 @@ void dispose_data(data_t *data)
 	stack_dispose(&data->calls, free_func_call_data);
 	stack_dispose(&data->var_table, free_local_scope);
 	stack_dispose(&data->aux, free);
+	dll_dispose(data->assign_list, stack_nofree);
 }
 
 bool init_func_data(void **ptr)
@@ -89,6 +90,7 @@ bool init_func_data(void **ptr)
 	bool res = true;
 	res = res && str_init(&(*fd)->args_types);
 	res = res && str_init(&(*fd)->ret_val_types);
+	res = res && str_init(&(*fd)->name);
 	(*fd)->used_return = false;
 	return res;
 }
@@ -120,6 +122,7 @@ void free_func_data(void *ptr)
 	func_data_t *fd = (func_data_t*)ptr;
 	str_free(&fd->args_types);
 	str_free(&fd->ret_val_types);
+	str_free(&fd->name);
 	free(fd);
 }
 
@@ -127,10 +130,13 @@ void free_local_scope(void *ptr)
 {
 	stnode_ptr *node = (stnode_ptr*)ptr;
 	symtable_dispose(node, free_var_data);
+	free(node);
 }
 
 void free_var_data(void *ptr)
 {
+	var_data_t *vd = (var_data_t*)ptr;
+	str_free(&vd->name);
 	free(ptr);
 }
 
@@ -170,6 +176,9 @@ int parse(data_t *data)
 			return ERR_SYNTAX;
 	}
 
+	if (symtable_search(data->func_table, "main") == NULL)
+		return ERR_SEMANTIC_UNDEF_REDEF;
+
 	return check_func_calls(data);
 }
 
@@ -187,6 +196,8 @@ static int func_header(data_t *data)
 	if (ptr == NULL || !init_func_data(&ptr->data))
 		return ERR_INTERNAL;
 	data->fdata = ptr->data;
+	if (!str_add_const(&data->fdata->name, name))
+		return ERR_INTERNAL;
 
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_PAR_OPEN) // func name(
@@ -473,7 +484,9 @@ static int reassignment(data_t *data)
 			var_data_t *vd = find_var(data, assign->name.str, false);
 			if (vd == NULL)
 				return ERR_SEMANTIC_UNDEF_REDEF;
-			assign->type = vd->type;
+
+			free_var_data(assign); //var exists => free alocated var
+			node->data = vd; //assign existed var to list
 		}
 		node = node->next;
 	}
@@ -674,6 +687,8 @@ static int end_of_cycle(data_t *data)
 static int condition(data_t *data)
 {
 	var_data_t *aux1 = create_aux_var(data);
+	if (aux1 == NULL)
+		return ERR_INTERNAL;
 	data->vdata = aux1;	
 
 	data->allow_func = false;
@@ -689,6 +704,8 @@ static int condition(data_t *data)
 	}
 
 	var_data_t *aux2 = create_aux_var(data);
+	if (aux2 == NULL)
+		return ERR_INTERNAL;
 	data->vdata = aux2;
 
 	data->allow_func = false;
@@ -696,6 +713,9 @@ static int condition(data_t *data)
 
 	if (compare_types(aux1->type, aux2->type) == '0')
 		return ERR_SEMANTIC_TYPE_COMPAT;
+
+	free_var_data(aux1);
+	free_var_data(aux2);
 
 	return 0;
 }
@@ -710,6 +730,8 @@ static int returned_vals(data_t *data)
 	}
 
 	var_data_t *aux1 = create_aux_var(data);
+	if (aux1 == NULL)
+		return ERR_INTERNAL;
 	data->vdata = aux1;	
 
 	data->allow_func = false;
@@ -717,6 +739,8 @@ static int returned_vals(data_t *data)
 
 	data->result = check_ret_vals(data, aux1->type, 0);
 	CHECK_RESULT()
+
+	free_var_data(aux1);
 
 	if (TKN.type == TOKEN_COMMA)
 	{
@@ -737,6 +761,8 @@ static int returned_vals(data_t *data)
 static int next_returned_val(data_t *data, unsigned int n)
 {
 	var_data_t *auxn = create_aux_var(data);
+	if (auxn == NULL)
+		return ERR_INTERNAL;
 	data->vdata = auxn;	
 
 	data->allow_func = false;
@@ -744,6 +770,8 @@ static int next_returned_val(data_t *data, unsigned int n)
 
 	data->result = check_ret_vals(data, auxn->type, n);
 	CHECK_RESULT()
+
+	free_var_data(auxn);
 
 	if (TKN.type == TOKEN_COMMA)
 	{
@@ -996,16 +1024,29 @@ static var_data_t* create_aux_var(data_t *data)
 		return NULL;
 
 	vd->type = 't';
-	str_init(&vd->name);
+	if (!str_init(&vd->name))
+	{
+		free(vd);
+		return NULL;
+	}
 
 	int n = *(int*)data->aux.top->data;
-	int len = (6 + ((n - n % 2) / 10));
+	int len = (7 + ((n - n % 2) / 10));
 	char *name = malloc(sizeof(char) * len);
-	sprintf(name, "@aux_%d", n);
-	str_add_const(&vd->name, name);
-	*(int*)data->aux.top->data += 1;
+	if (name == NULL)
+	{
+		free_var_data(vd);
+		return NULL;
+	}
 
-	//free(name); probably not needed ... causing seg fault
+	sprintf(name, "@aux_%d", n);
+	if (!str_add_const(&vd->name, name))
+	{
+		free_var_data(vd);
+		return NULL;
+	}
+
+	*(int*)data->aux.top->data += 1;
 	return vd;
 }
 

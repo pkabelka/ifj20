@@ -62,7 +62,7 @@ void free_symbol(void *ptr)
 	symbol_t *sym = (symbol_t*)ptr;
 	if (sym->sym_type == SYM_VAR)
 	{ 
-		//data will be cleaer from sym tabel
+		//data will be cleared from sym tabel
 	}
 	else if (sym->sym_type == SYM_OPERATOR)
 		free(sym->data);
@@ -74,7 +74,7 @@ void free_symbol(void *ptr)
 	}
 	else
 		free(sym->data);
-	//free(sym);
+	free(ptr);
 }
 
 int expression(data_t *data)
