@@ -386,11 +386,11 @@ static int call_func(data_t *data)
 		return ERR_INTERNAL;
 	
 	call->line = TKN.line;
-	if (!str_add(&call->expected_return, 'r'))
+	/*if (!str_add(&call->expected_return, 'r'))
 	{
 		free_func_call_data(call);
 		return ERR_INTERNAL;
-	}
+	}*/
 
 	char *name;
 	if (data->prev_token.type == TOKEN_KEYWORD)
@@ -996,7 +996,6 @@ static bool add_inter_func_to_table(data_t *data)
 		symtable_delete_node(&data->func_table, "print", stack_nofree);
 		return false;
 	}
-	if (!str_add_const(&((func_data_t*)ptr->data)->args_types, "r")) return false;
 	//int2float
 	ptr = symtable_insert(&data->func_table, "int2float", &err);
 	if (ptr == NULL) return false;
@@ -1074,7 +1073,7 @@ static int check_func_calls(data_t *data)
 		func_data_t *fdata = (func_data_t*)ptr->data;
 		if (str_cmp_const(&fcd->func_name, "print") == 0)
 		{
-			if (str_cmp_const(&fcd->expected_return, "r") != 0)
+			if (fcd->expected_return.len != 0)
 				return ERR_SEMANTIC_FUNC_PARAMS;
 		}
 		else
@@ -1251,9 +1250,8 @@ static int check_ret_vals(data_t *data, char type, unsigned int n)
 
 static bool compare_list_of_types(string expected, string sent)
 {	
-	if ((expected.len > 0 && expected.str[0] == 'r') //not assigning data from function
-		/*(sent.len > 0 && sent.str[0] == 'r')*/)
-		return true;
+	/* if (expected.len == 0) //not assigning data from function
+		return true;*/
 
 	if (expected.len != sent.len)
 		return false; //bad argument count
