@@ -152,7 +152,10 @@ static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 		if (sub_list == NULL)
 			return ERR_INTERNAL;
 
-		data->result = bracket_scope(data, sub_list, sym_stack);
+		stack sub_stack;
+		stack_init(&sub_stack);
+
+		data->result = bracket_scope(data, sub_list, &sub_stack);
 		if (data->result != 0)
 		{
 			dll_dispose(sub_list, free_symbol);
@@ -361,8 +364,7 @@ static int push_o(token token, dll_t *list, stack *sym_stack)
 		*ot = S_DIV;
 
 	//pushing all operators with greater priority than current
-	struct stack_el *elem = sym_stack->top;
-	while (elem != NULL && precedence[*ot][*(o_type*)elem->data] == -1)
+	while (sym_stack->count > 0 && precedence[*(o_type*)sym_stack->top->data][*ot] != 1)
 	{
 		symbol_t *sym = malloc(sizeof(symbol_t));
 		if (sym == NULL)
@@ -379,7 +381,7 @@ static int push_o(token token, dll_t *list, stack *sym_stack)
 			free_symbol(sym);
 			return ERR_INTERNAL;
 		}
-			
+
 		stack_pop(sym_stack, stack_nofree);
 	}
 
