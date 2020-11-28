@@ -91,6 +91,23 @@ bool str_add_var(string *s, ...)
     return true;
 }
 
+bool str_add_str(string *s1, string *s2)
+{
+    if ((s1->len + s2->len + 1) >= s1->mem_size)
+    {
+        if ((s1->str = (char*) realloc(s1->str, (s1->len + s2->len + 1) * sizeof(char))) == NULL)
+        {
+            return false;
+        }
+        s1->mem_size = (s1->len + s2->len + 1) * sizeof(char);
+    }
+
+    s1->len += s2->len;
+    strcat(s1->str, s2->str);
+    s1->str[s1->len] = '\0';
+    return true;
+}
+
 bool str_copy(string *src, string *dst)
 {
     if ((src->len + 1) >= dst->mem_size)

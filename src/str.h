@@ -67,6 +67,14 @@ bool str_add_const(string *s, const char *cstr);
 bool str_add_var(string *s, ...);
 
 /**
+ * @brief Appends s2 to the end of s1
+ * @param s1 Pointer to the first string
+ * @param s2 Pointer to the second string
+ * @return True upon successful append
+ */
+bool str_add_str(string *s1, string *s2);
+
+/**
  * @brief Copies the dynamic string from src to dst
  * @param src Pointer to the string structure
  * @param dst Appended string literal
