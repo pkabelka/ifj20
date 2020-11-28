@@ -1,6 +1,7 @@
 /**
  * @brief Parser implementation
  * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
  */
 
 #include "parser.h"
@@ -9,6 +10,7 @@
 #include "error.h"
 #include "expression.h"
 #include "enum_str.h"
+#include "codegen.h"
 
 #define NEXT_TOKEN() data->prev_token = data->token; if (get_next_token(&data->token) != SCANNER_SUCCESS) return ERR_LEX_STRUCTURE;
 #define RET() return data->result;
@@ -66,6 +68,9 @@ bool init_data(data_t *data)
 {
 	data->current_type = '0';
 	data->result = 0;
+	data->arg_idx = 0;
+	data->label_idx = 0;
+	data->assign_func = false;
 
 	stack_init(&data->var_table);
 	stack_init(&data->calls);
@@ -73,7 +78,8 @@ bool init_data(data_t *data)
 	symtable_init(&data->func_table);
 
 	data->assign_list = dll_init();
-	if (data->assign_list == NULL)
+	data->arg_list = dll_init();
+	if (data->assign_list == NULL || data->arg_list == NULL)
 	{
 		symtable_dispose(&data->func_table, free_func_data);
 		stack_dispose(&data->calls, free_func_call_data);
@@ -98,6 +104,7 @@ void dispose_data(data_t *data)
 	stack_dispose(&data->var_table, free_local_scope);
 	stack_dispose(&data->aux, free);
 	dll_dispose(data->assign_list, stack_nofree);
+	dll_dispose(data->arg_list, stack_nofree);
 }
 
 bool init_func_data(void **ptr)
@@ -218,6 +225,9 @@ int parse(data_t *data)
 			APPLY_NEXT_RULE(func_header)
 			APPLY_NEXT_RULE(_scope_);
 			APPLY_RULE(close_scope)
+			GEN(gen_func_end, data->fdata->name.str);
+			data->arg_idx = 0;
+			data->label_idx = 0;
 
 			if (!data->fdata->used_return)
 				return ERR_SEMANTIC_OTHER;
@@ -260,6 +270,8 @@ static int func_header(data_t *data)
 	if (TKN.type != TOKEN_PAR_OPEN) // func name(
 		return ERR_SYNTAX;
 
+	GEN(gen_func_begin, data->fdata->name.str);
+
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_PAR_CLOSE) //1+ args
 	{
@@ -285,6 +297,7 @@ static int func_header(data_t *data)
 		{
 			if (!str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw)))
 				return ERR_INTERNAL;
+			GEN(gen_func_def_retval, data->fdata->ret_val_types.len-1, TKN.attr.kw);
 			NEXT_TOKEN()
 			if (TKN.type == TOKEN_CURLY_OPEN) //starts of body
 				return 0;
@@ -330,6 +343,9 @@ static int func_args(data_t *data)
 		}
 		ptr->data = vd;
 
+		GEN(gen_func_arg, vd->name.str, data->arg_idx);
+		data->arg_idx++;
+
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_COMMA)
 		{
@@ -346,6 +362,7 @@ static int func_return_vals(data_t *data)
 {
 	APPLY_RULE(var_type)
 	str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
+	GEN(gen_func_def_retval, data->fdata->ret_val_types.len-1, TKN.attr.kw);
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE)
 		return 0;
@@ -410,7 +427,10 @@ static int call_func(data_t *data)
 		return ERR_INTERNAL;
 	}
 
+	GEN(gen_create_frame);
+	data->arg_idx = 0;
 	APPLY_NEXT_RULE(func_calling)
+	GEN(gen_func_call, call->func_name.str);
 	return 0;
 }
 
@@ -418,6 +438,21 @@ static int func_calling(data_t *data)
 {
 	if (TKN.type == TOKEN_IDENTIFIER)
 	{
+		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		{
+			token *tmp_token = malloc(sizeof(token));
+			tmp_token->type = TKN.type;
+			string tmp_string;
+			str_init(&tmp_string);
+			tmp_token->attr.str = &tmp_string;
+			str_copy(TKN.attr.str, tmp_token->attr.str);
+			dll_insert_first(data->arg_list, tmp_token);
+		}
+		else
+		{
+			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
+		}
+
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_COMMA || TKN.type == TOKEN_PAR_CLOSE) //variable as func parameter
 		{
@@ -429,6 +464,25 @@ static int func_calling(data_t *data)
 			if (TKN.type == TOKEN_PAR_CLOSE)
 			{
 				NEXT_TOKEN();
+				if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+				{
+					dll_node_t *tmp = data->arg_list->first;
+					while (tmp != NULL)
+					{
+						GEN(gen_func_arg_push, (token*)tmp->data);
+						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
+						{
+							str_free(((token*)tmp->data)->attr.str);
+						}
+						tmp = tmp->next;
+					}
+					token tmp_token;
+					tmp_token.type = TOKEN_INT;
+					tmp_token.attr.int_val = data->arg_list->size;
+					GEN(gen_func_arg_push, &tmp_token);
+					dll_dispose(data->arg_list, free);
+					data->arg_list = dll_init();
+				}
 				return 0;
 			}
 
@@ -438,6 +492,36 @@ static int func_calling(data_t *data)
 	}
 	else if (TKN.type == TOKEN_INT || TKN.type == TOKEN_STRING || TKN.type == TOKEN_FLOAT64)
 	{
+		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		{
+			token *tmp_token = malloc(sizeof(token));
+			tmp_token->type = TKN.type;
+			string tmp_string;
+			str_init(&tmp_string);
+			tmp_token->attr.str = &tmp_string;
+			switch (tmp_token->type)
+			{
+				case TOKEN_INT:
+					tmp_token->attr.int_val = TKN.attr.int_val;
+					str_free(&tmp_string);
+					break;
+				case TOKEN_FLOAT64:
+					tmp_token->attr.float64_val = TKN.attr.float64_val;
+					str_free(&tmp_string);
+					break;
+				case TOKEN_STRING:
+					str_copy(TKN.attr.str, tmp_token->attr.str);
+					break;
+				default:
+					break;
+			}
+			dll_insert_first(data->arg_list, tmp_token);
+		}
+		else
+		{
+			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
+		}
+
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_COMMA || TKN.type == TOKEN_PAR_CLOSE) //constants as func parameter
 		{
@@ -445,6 +529,25 @@ static int func_calling(data_t *data)
 			
 			if (TKN.type == TOKEN_PAR_CLOSE)
 			{
+				if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+				{
+					dll_node_t *tmp = data->arg_list->first;
+					while (tmp != NULL)
+					{
+						GEN(gen_func_arg_push, (token*)tmp->data);
+						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
+						{
+							str_free(((token*)tmp->data)->attr.str);
+						}
+						tmp = tmp->next;
+					}
+					token tmp_token;
+					tmp_token.type = TOKEN_INT;
+					tmp_token.attr.int_val = data->arg_list->size;
+					GEN(gen_func_arg_push, &tmp_token);
+					dll_dispose(data->arg_list, free);
+					data->arg_list = dll_init();
+				}
 				NEXT_TOKEN();
 				return 0;
 			}
@@ -539,6 +642,7 @@ static int assignment(data_t *data)
 			stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_table.top->data), assign->name.str, &err);
 			if (ptr == NULL)
 				return ERR_INTERNAL;
+			GEN(gen_func_var, assign->name.str);
 
 			assign->type = 't';
 			ptr->data = assign;
@@ -551,6 +655,7 @@ static int assignment(data_t *data)
 	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
+	GEN(gen_pop, data->vdata->name.str, "LF");
 
 	dll_clear(data->assign_list, stack_nofree);
 	return 0;
@@ -579,6 +684,22 @@ static int reassignment(data_t *data)
 	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
+	dll_node_t *tmp = data->assign_list->first;
+	unsigned long i = 0;
+	while (tmp != NULL)
+	{
+		if (data->assign_func)
+		{
+			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
+		}
+		GEN(gen_pop, ((var_data_t*)tmp->data)->name.str, "LF");
+		// GEN(gen_get_retval, ((var_data_t*)tmp->data)->name.str, "LF", i++);
+		tmp = tmp->next;
+	}
+	if (data->assign_func)
+	{
+		data->assign_func = false;
+	}
 
 	dll_clear(data->assign_list, stack_nofree);
 	return 0;
@@ -616,6 +737,7 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 		return 0;
 	else if (TKN.type == TOKEN_PAR_OPEN)
 	{
+		data->assign_func = true;
 		APPLY_RULE(call_func)
 		if (data->nassigns == 1)
 		{
@@ -667,14 +789,19 @@ static int statement(data_t *data)
 	if (TKN.type == TOKEN_CURLY_OPEN)
 	{
 		EXPECT_NEXT_TOKEN(TOKEN_EOL)
+		unsigned long curr_idx = data->label_idx;
+		data->label_idx++;
+		GEN(gen_if_start, data->fdata->name.str, curr_idx);
 		APPLY_NEXT_RULE(scope) //new scope if
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_ELSE)
 		{
 			EXPECT_NEXT_TOKEN(TOKEN_CURLY_OPEN)
 			EXPECT_NEXT_TOKEN(TOKEN_EOL)
+			GEN(gen_else, data->fdata->name.str, curr_idx);
 			APPLY_NEXT_RULE(scope) //new scope else
 			EXPECT_NEXT_TOKEN(TOKEN_EOL)
+			GEN(gen_endif, data->fdata->name.str, curr_idx);
 			return 0;
 		}
 	}
@@ -715,14 +842,18 @@ static int func_or_list_of_vars(data_t *data)
 static int cycle(data_t *data)
 {
 	APPLY_RULE(new_scope)
-
+	unsigned long curr_idx = data->label_idx;
+	data->label_idx++;
 	if (TKN.type == TOKEN_SEMICOLON) //empty
 	{
+		GEN(gen_for_start, data->fdata->name.str, curr_idx);
 		APPLY_NEXT_RULE(condition)
+		GEN(gen_for_cond, data->fdata->name.str, curr_idx);
 		if (TKN.type == TOKEN_SEMICOLON)
 		{
 			APPLY_NEXT_RULE(end_of_cycle)
 			APPLY_RULE(close_scope)
+			GEN(gen_endfor, data->fdata->name.str, curr_idx);
 			return 0;
 		}
 	}
@@ -730,13 +861,17 @@ static int cycle(data_t *data)
 	{
 		data->allow_assign = true;
 		APPLY_RULE(list_of_vars)
+		GEN(gen_for_start, data->fdata->name.str, curr_idx);
+
 		if (TKN.type == TOKEN_SEMICOLON)
 		{
 			APPLY_NEXT_RULE(condition)
+			GEN(gen_for_cond, data->fdata->name.str, curr_idx);
 			if (TKN.type == TOKEN_SEMICOLON)
 			{
 				APPLY_NEXT_RULE(end_of_cycle)
 				APPLY_RULE(close_scope)
+				GEN(gen_endfor, data->fdata->name.str, curr_idx);
 				return 0;
 			}
 		}
@@ -790,6 +925,7 @@ static int condition(data_t *data)
 		default:
 			return ERR_SYNTAX;
 	}
+	token_type rel_op = TKN.type;
 
 	var_data_t *aux2 = create_aux_var(data);
 	if (aux2 == NULL)
@@ -812,6 +948,47 @@ static int condition(data_t *data)
 
 	free_var_data(aux1);
 	free_var_data(aux2);
+
+	switch (rel_op)
+	{
+		case TOKEN_EQUAL:
+			CODE_INT("EQS\n");
+			break;
+		case TOKEN_NOT_EQUAL:
+			CODE_INT("EQS\nNOTS\n");
+			break;
+		case TOKEN_LESS_THAN:
+			CODE_INT("LTS\n");
+			break;
+		case TOKEN_LESS_OR_EQUAL:
+			CODE_INT("POPS GF@%%tmp0\n"\
+					"POPS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp0\n"\
+					"LTS\n"\
+					"PUSHS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp0\n"\
+					"EQS\n"\
+					"ORS\n");
+			break;
+		case TOKEN_GREATER_THAN:
+			CODE_INT("GTS\n");
+			break;
+		case TOKEN_GREATER_OR_EQUAL:
+			CODE_INT("POPS GF@%%tmp0\n"\
+					"POPS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp0\n"\
+					"GTS\n"\
+					"PUSHS GF@%%tmp1\n"\
+					"PUSHS GF@%%tmp0\n"\
+					"EQS\n"\
+					"ORS\n");
+			break;
+		default:
+			break;
+	}
+	GEN(gen_pop, "%%res", "GF");
 
 	return 0;
 }
@@ -844,6 +1021,10 @@ static int returned_vals(data_t *data)
 		RET()
 	}
 
+	data->arg_idx = 0;
+	GEN(gen_func_set_retval, data->arg_idx);
+	data->arg_idx++;
+
 	free_var_data(aux1);
 
 	if (TKN.type == TOKEN_COMMA)
@@ -851,6 +1032,7 @@ static int returned_vals(data_t *data)
 		NEXT_TOKEN()
 		data->result = next_returned_val(data, 1);		
 		CHECK_RESULT()
+		GEN(gen_func_return, data->fdata->name.str);
 		return 0;
 	}
 	else if (TKN.type == TOKEN_EOL)
@@ -875,6 +1057,8 @@ static int next_returned_val(data_t *data, unsigned int n)
 		free_var_data(auxn);
 		RET()
 	}
+	GEN(gen_func_set_retval, data->arg_idx);
+	data->arg_idx++;
 
 	data->result = check_ret_vals(data, auxn->type, n);
 	CHECK_RESULT_ERR()

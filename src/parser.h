@@ -1,6 +1,7 @@
 /**
  * @brief Parser interface - syntax and semantic analysis
  * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
  */
 
 #ifndef _PARSER_H
@@ -59,6 +60,10 @@ typedef struct
 	bool allow_func;
 	bool fix_call;
 	int result;
+	unsigned long arg_idx;
+	unsigned long label_idx;
+	dll_t *arg_list;
+	bool assign_func;
 } data_t;
 
 /**

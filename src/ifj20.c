@@ -4,15 +4,17 @@
 #include "error.h"
 #include "parser.h"
 #include "enum_str.h"
+#include "codegen.h"
 
 int main()
 {
     string s;
-    str_init(&s);
+    GEN(str_init, &s);
     set_token_string_attr(&s);
 
     data_t data;
-    init_data(&data);
+    GEN(init_data, &data);
+    GEN(gen_codegen_init);
 
     int result = parse(&data);
     if (result != 0)
@@ -30,8 +32,14 @@ int main()
         else
             fprintf(stderr, "error %d - line: %d\n", result, data.token.line);
     }
+    else
+    {
+        GEN(gen_codegen_output);
+    }
+    
     dispose_data(&data);
     str_free(&s);
+    str_free(&ifjcode20_output);
 
-    return result;
+    return 0;
 }

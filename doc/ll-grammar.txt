@@ -1,0 +1,32 @@
+%token begin EOF semi comma func id int float64 string chr ord len substr float2int int2float print inputf intputi inputs
+%%
+parse            : begin func_def EOF ;
+func_def         : func_header scope func_def
+                 | ;
+func_header      : func id func_arg func_return_vals scope ;
+func_arg         : 
+                 | id next_func_arg ;
+next_func_arg    :
+                 | id;
+func_return_vals : var_type ;
+var_type         : int
+                 | float64
+                 | string ;
+expression       : expression_old_token ;
+expression_old_token : id end_of_expression
+                     : is_inter_func ;
+end_of_expression    : ;
+scope                :
+                     | ;
+// is_inter_func    : len
+//                  | ord
+//                  | chr
+//                  | substr
+//                  | float2int
+//                  | int2float
+//                  | print
+//                  | inputf
+//                  | intputi
+//                  | inputs ;
+is_inter_func    : ;
+assignment          : expression ;

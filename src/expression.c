@@ -9,6 +9,7 @@
 #include "scanner.h"
 #include "stack.h"
 #include "str.h"
+#include "codegen.h"
 
 #define TKN data->token
 #define CHECK_RESULT() if (data->result != 0) return data->result;
@@ -32,7 +33,7 @@ typedef enum
 	SYM_VAR, 
 	SYM_INT, 
 	SYM_STRING, 
-	SYM_FLOAT
+	SYM_FLOAT64
 } symbol_type;
 
 typedef struct 
@@ -121,6 +122,79 @@ int expression(data_t *data)
 			if (data->vdata != NULL)
 				data->vdata->type = data->current_type;
 			//TODO: generate code
+			token tmp_tok;
+			string tmp_str;
+			tmp_tok.attr.str = &tmp_str;
+			dll_node_t *tmp = list->first;
+			while (tmp != NULL)
+			{
+				switch (((symbol_t*)tmp->data)->sym_type)
+				{
+					case SYM_OPERATOR:
+						switch (*((o_type*)((symbol_t*)tmp->data)->data))
+						{
+							case S_ADD:
+								switch (data->current_type)
+								{
+									case 's':
+										CODE_INT("POPS GF@%%tmp2\n"\
+												"POPS GF@%%tmp1\n"\
+												"CONCAT GF@%%tmp0 GF@%%tmp1 GF@%%tmp2\n"\
+												"PUSHS GF@%%tmp0\n");
+										break;
+									default:
+										CODE_INT("ADDS\n");
+										break;
+								}
+								break;
+							case S_SUB:
+								CODE_INT("SUBS\n");
+								break;
+							case S_MUL:
+								CODE_INT("MULS\n");
+								break;
+							case S_DIV:
+								CODE_INT("DIVS\n");
+								break;
+							default:
+								break;
+						}
+						break;
+					case SYM_INT:
+						tmp_tok.type = TOKEN_INT;
+						tmp_tok.attr.int_val = *((long*)((symbol_t*)tmp->data)->data);
+						CODE_INT("PUSHS ");
+						GEN(gen_token_value, &tmp_tok);
+						CODE_INT("\n");
+						break;
+					case SYM_FLOAT64:
+						tmp_tok.type = TOKEN_FLOAT64;
+						tmp_tok.attr.float64_val = *((double*)((symbol_t*)tmp->data)->data);
+						CODE_INT("PUSHS ");
+						GEN(gen_token_value, &tmp_tok);
+						CODE_INT("\n");
+						break;
+					case SYM_STRING:
+						tmp_tok.type = TOKEN_STRING;
+						tmp_tok.attr.str = (string*)((symbol_t*)tmp->data)->data;
+						CODE_INT("PUSHS ");
+						GEN(gen_token_value, &tmp_tok);
+						CODE_INT("\n");
+						break;
+					case SYM_VAR:
+						tmp_tok.type = TOKEN_IDENTIFIER;
+						tmp_tok.attr.str = &((var_data_t*)((symbol_t*)tmp->data)->data)->name;
+						CODE_INT("PUSHS ");
+						GEN(gen_token_value, &tmp_tok);
+						CODE_INT("\n");
+						break;
+					default:
+						break;
+				}
+				tmp = tmp->next;
+			}
+			// CODE_INT("POPS GF@%%res\n");
+			// CODE_INT("BREAK\n");
 		}
 	}
 
@@ -250,30 +324,30 @@ static int push_const(data_t *data, token token, dll_t *list)
 	if (sym == NULL)
 		return ERR_INTERNAL;
 
-	if (token.type == TOKEN_INT) //int
+	if (token.type == TOKEN_INT) //int64 (long)
 	{
 		sym->sym_type = SYM_INT;
-		sym->data = malloc(sizeof(int));
+		sym->data = malloc(sizeof(long));
 		if (sym->data == NULL)
 		{
 			free(sym);
 			return ERR_INTERNAL;
 		}
 
-		*(int*)sym->data = token.attr.int_val;
+		*(long*)sym->data = token.attr.int_val;
 		data->current_type = compare_types('i', data->current_type);
 	}
-	else if (token.type == TOKEN_FLOAT64) //float
+	else if (token.type == TOKEN_FLOAT64) //float64 (double)
 	{
-		sym->sym_type = SYM_FLOAT;
-		sym->data = malloc(sizeof(float));
+		sym->sym_type = SYM_FLOAT64;
+		sym->data = malloc(sizeof(double));
 		if (sym->data == NULL)
 		{
 			free(sym);
 			return ERR_INTERNAL;
 		}
 
-		*(float*)sym->data = token.attr.float64_val;
+		*(double*)sym->data = token.attr.float64_val;
 		data->current_type = compare_types('f', data->current_type);
 	}
 	else //string
