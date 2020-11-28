@@ -64,6 +64,9 @@ typedef struct
 	unsigned long label_idx;
 	dll_t *arg_list;
 	bool assign_func;
+	bool assign_for;
+	bool assign_for_swap_output;
+	stack for_assign;
 } data_t;
 
 /**

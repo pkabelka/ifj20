@@ -15,6 +15,7 @@ int main()
     data_t data;
     GEN(init_data, &data);
     GEN(gen_codegen_init);
+    GEN(str_init, &tmp_output);
 
     int result = parse(&data);
     if (result != 0)
@@ -40,6 +41,7 @@ int main()
     dispose_data(&data);
     str_free(&s);
     str_free(&ifjcode20_output);
+    str_free(&tmp_output);
 
     return 0;
 }

@@ -126,6 +126,15 @@ int expression(data_t *data)
 			string tmp_str;
 			tmp_tok.attr.str = &tmp_str;
 			dll_node_t *tmp = list->first;
+
+			if (data->assign_for && data->assign_for_swap_output)
+			{
+				string tmp_swap = ifjcode20_output;
+				ifjcode20_output = tmp_output;
+				tmp_output = tmp_swap;
+				data->assign_for_swap_output = false;
+			}
+
 			while (tmp != NULL)
 			{
 				switch (((symbol_t*)tmp->data)->sym_type)

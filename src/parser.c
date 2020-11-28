@@ -71,7 +71,10 @@ bool init_data(data_t *data)
 	data->arg_idx = 0;
 	data->label_idx = 0;
 	data->assign_func = false;
+	data->assign_for = false;
+	data->assign_for_swap_output = false;
 
+	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
 	stack_init(&data->calls);
 	stack_init(&data->aux);
@@ -103,6 +106,7 @@ void dispose_data(data_t *data)
 	stack_dispose(&data->calls, free_func_call_data);
 	stack_dispose(&data->var_table, free_local_scope);
 	stack_dispose(&data->aux, free);
+	stack_dispose(&data->for_assign, free);
 	dll_dispose(data->assign_list, stack_nofree);
 	dll_dispose(data->arg_list, stack_nofree);
 }
@@ -693,12 +697,24 @@ static int reassignment(data_t *data)
 			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
 		}
 		GEN(gen_pop, ((var_data_t*)tmp->data)->name.str, "LF");
-		// GEN(gen_get_retval, ((var_data_t*)tmp->data)->name.str, "LF", i++);
 		tmp = tmp->next;
 	}
 	if (data->assign_func)
 	{
 		data->assign_func = false;
+	}
+	if (data->assign_for)
+	{
+		string tmp_swap = ifjcode20_output;
+		ifjcode20_output = tmp_output;
+		tmp_output = tmp_swap;
+		data->assign_for = false;
+		data->assign_for_swap_output = false;
+		string *tmp_push = malloc(sizeof(string));
+		str_init(tmp_push);
+		str_copy(&tmp_output, tmp_push);
+		stack_push(&data->for_assign, tmp_push);
+		str_clear(&tmp_output);
 	}
 
 	dll_clear(data->assign_list, stack_nofree);
@@ -851,8 +867,14 @@ static int cycle(data_t *data)
 		GEN(gen_for_cond, data->fdata->name.str, curr_idx);
 		if (TKN.type == TOKEN_SEMICOLON)
 		{
+			data->assign_for = true;
+			data->assign_for_swap_output = true;
 			APPLY_NEXT_RULE(end_of_cycle)
 			APPLY_RULE(close_scope)
+
+			str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+			str_free((string*)data->for_assign.top->data);
+			stack_pop(&data->for_assign, free);
 			GEN(gen_endfor, data->fdata->name.str, curr_idx);
 			return 0;
 		}
@@ -869,8 +891,14 @@ static int cycle(data_t *data)
 			GEN(gen_for_cond, data->fdata->name.str, curr_idx);
 			if (TKN.type == TOKEN_SEMICOLON)
 			{
+				data->assign_for = true;
+				data->assign_for_swap_output = true;
 				APPLY_NEXT_RULE(end_of_cycle)
 				APPLY_RULE(close_scope)
+
+				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+				str_free((string*)data->for_assign.top->data);
+				stack_pop(&data->for_assign, free);
 				GEN(gen_endfor, data->fdata->name.str, curr_idx);
 				return 0;
 			}

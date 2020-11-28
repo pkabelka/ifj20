@@ -7,6 +7,7 @@
 #include "codegen.h"
 
 string ifjcode20_output;
+string tmp_output;
 
 bool gen_output_header()
 {
@@ -208,7 +209,6 @@ bool gen_else(const char *id, unsigned long idx)
 {
     CODE("JUMP $", id, "$"); CODE_NUM(idx); CODE("$endif\n"); // JUMP $id$endif
     CODE("LABEL $", id, "$"); CODE_NUM(idx); CODE("$else"); CODE("\n"); // LABEL $id$else
-    // CODE("LABEL $", id, "$"); CODE_NUM(idx); CODE("$else"); CODE("\nWRITE string@bruh"); CODE_NUM(idx); CODE("\n"); // LABEL $id$else
     return true;
 }
 
@@ -236,29 +236,6 @@ bool gen_endfor(const char *id, unsigned long idx)
     CODE("LABEL $", id, "$"); CODE_NUM(idx); CODE("$endfor"); CODE("\n"); // LABEL $id$idx$endfor
     return true;
 }
-
-
-// int main()
-// {
-//     GEN(codegen_init);
-
-//     GEN(func_begin, "main");
-//     GEN(create_frame);
-//     CODE("CALL $factorial\n");
-//     CODE("DEFVAR LF@tmp\n");
-//     CODE("MOVE LF@tmp int@1\n");
-//     GEN(func_return, "main");
-//     GEN(func_end);
-
-//     GEN(func_begin, "factorial");
-//     GEN(func_retval);
-//     CODE("WRITE string@aaaa\\010\n");
-//     GEN(func_return, "factorial");
-//     GEN(func_end);
-
-//     GEN(codegen_output);
-//     return 0;
-// }
 
 bool gen_builtin_functions()
 {

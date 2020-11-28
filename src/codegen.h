@@ -46,6 +46,7 @@
 #define GEN_BOOL(_FUNC, ...) if(_FUNC(__VA_ARGS__)==false)return false
 
 extern string ifjcode20_output;
+extern string tmp_output;
 
 bool gen_codegen_init();
 bool gen_codegen_output();
