@@ -240,6 +240,7 @@ int parse(data_t *data)
 			data->arg_idx = 0;
 			data->label_idx = 0;
 			data->scope_idx = 0;
+			stack_dispose(&data->var_table, free_local_scope); // dispose all scopes at the end of a function
 
 			if (!data->fdata->used_return)
 				return ERR_SEMANTIC_OTHER;
@@ -676,7 +677,29 @@ static int assignment(data_t *data)
 			stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_table.top->data), assign->name.str, &err);
 			if (ptr == NULL)
 				return ERR_INTERNAL;
-			GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
+
+			// Check if the variable is declared in the same scope_idx but different scope
+			bool declared = false;
+			struct stack_el *elem = data->var_table.top;
+			while (elem != NULL)
+			{
+				stnode_ptr bst = *(stnode_ptr*)elem->data;
+				stnode_ptr var_ptr = symtable_search(bst, assign->name.str);
+				if (var_ptr != NULL && var_ptr->data != NULL)
+				{
+					if (((var_data_t*)var_ptr->data)->scope_idx == assign->scope_idx)
+					{
+						declared = true;
+						break;
+					}
+				}
+				elem = elem->next;
+			}
+
+			if (!declared)
+			{
+				GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
+			}
 
 			assign->type = 't';
 			ptr->data = assign;
@@ -1188,7 +1211,9 @@ static int new_scope(data_t *data)
 static int close_scope(data_t *data)
 {
 	stack_pop(&data->aux, free);
-	stack_pop(&data->var_table, free_local_scope);
+	// The next statement is commented because we don't want to free the
+	// scope so we can check for variable declarations at the same scope index
+	// stack_pop(&data->var_table, free_local_scope);
 	data->scope_idx--;
 	return 0;
 }
