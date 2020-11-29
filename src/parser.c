@@ -299,7 +299,13 @@ static int func_header(data_t *data)
 	}
 	else if (TKN.type == TOKEN_PAR_OPEN) //return vals
 	{
-		APPLY_NEXT_RULE(func_return_vals)
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_PAR_CLOSE) //empty return list
+			data->fdata->used_return = true; // no need for using return
+		else
+		{
+			APPLY_RULE(func_return_vals)
+		}
 		NEXT_TOKEN()
 		if (TKN.type == TOKEN_CURLY_OPEN) //start of body
 			return 0;
@@ -754,6 +760,7 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 
 	if (data->fix_call && data->nassigns == 2) //fix last call
 	{
+		data->fix_call = false;
 		func_call_data_t *call = (func_call_data_t*)data->calls.top->data;
 		char t = call->expected_return.str[0];
 		str_clear(&call->expected_return);
@@ -775,7 +782,11 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 	else if (TKN.type == TOKEN_EOL ||
 			TKN.type == TOKEN_SEMICOLON ||
 			TKN.type == TOKEN_CURLY_OPEN)
+	{
+		if (data->nassigns != data->assign_list->size && !data->fix_call)
+			return ERR_SEMANTIC_OTHER; //bad counts of parameter
 		return 0;
+	}
 	else if (TKN.type == TOKEN_PAR_OPEN)
 	{
 		data->assign_func = true;
@@ -789,7 +800,11 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 			set_return_types(data, node);
 		
 		if (TKN.type == TOKEN_EOL)
+		{
+			if (data->nassigns != data->assign_list->size && !data->fix_call)
+				return ERR_SEMANTIC_OTHER; //bad counts of parameter
 			return 0;
+		}
 		
 		NEXT_TOKEN();
 		return end_of_assignment(data, node); //assigning still current value
