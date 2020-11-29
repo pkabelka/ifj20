@@ -46,7 +46,7 @@
 #define GEN_BOOL(_FUNC, ...) if(_FUNC(__VA_ARGS__)==false)return false
 
 extern string ifjcode20_output;
-extern string tmp_output;
+extern string for_assigns;
 
 bool gen_codegen_init();
 bool gen_codegen_output();
@@ -58,7 +58,7 @@ bool gen_generate_function_return(char *function_id);
 bool gen_func_begin(const char *id);
 bool gen_func_def_retval(unsigned long idx, keyword kw);
 bool gen_func_set_retval(unsigned long idx);
-bool gen_func_var(char *id);
+bool gen_defvar(char *id);
 bool gen_pop(char *arg_id, char *frame);
 bool gen_get_retval(char *id, char *frame, unsigned long idx);
 bool gen_func_arg(char *arg_id, unsigned long idx);

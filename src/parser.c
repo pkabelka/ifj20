@@ -646,7 +646,7 @@ static int assignment(data_t *data)
 			stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_table.top->data), assign->name.str, &err);
 			if (ptr == NULL)
 				return ERR_INTERNAL;
-			GEN(gen_func_var, assign->name.str);
+			GEN(gen_defvar, assign->name.str);
 
 			assign->type = 't';
 			ptr->data = assign;
@@ -706,15 +706,15 @@ static int reassignment(data_t *data)
 	if (data->assign_for)
 	{
 		string tmp_swap = ifjcode20_output;
-		ifjcode20_output = tmp_output;
-		tmp_output = tmp_swap;
+		ifjcode20_output = for_assigns;
+		for_assigns = tmp_swap;
 		data->assign_for = false;
 		data->assign_for_swap_output = false;
 		string *tmp_push = malloc(sizeof(string));
 		str_init(tmp_push);
-		str_copy(&tmp_output, tmp_push);
+		str_copy(&for_assigns, tmp_push);
 		stack_push(&data->for_assign, tmp_push);
-		str_clear(&tmp_output);
+		str_clear(&for_assigns);
 	}
 
 	dll_clear(data->assign_list, stack_nofree);

@@ -130,8 +130,8 @@ int expression(data_t *data)
 			if (data->assign_for && data->assign_for_swap_output)
 			{
 				string tmp_swap = ifjcode20_output;
-				ifjcode20_output = tmp_output;
-				tmp_output = tmp_swap;
+				ifjcode20_output = for_assigns;
+				for_assigns = tmp_swap;
 				data->assign_for_swap_output = false;
 			}
 

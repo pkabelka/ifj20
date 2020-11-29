@@ -7,7 +7,7 @@
 #include "codegen.h"
 
 string ifjcode20_output;
-string tmp_output;
+string for_assigns;
 
 bool gen_output_header()
 {
@@ -91,7 +91,7 @@ bool gen_func_set_retval(unsigned long idx)
     return true;
 }
 
-bool gen_func_var(char *id)
+bool gen_defvar(char *id)
 {
     CODE("DEFVAR LF@", id, "\n");
     return true;
