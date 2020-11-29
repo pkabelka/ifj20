@@ -428,6 +428,13 @@ static int call_func(data_t *data)
 	else
 		name = data->prev_token.attr.str->str;
 
+	//checking if name of the function is used as variable name
+	if (find_var(data, name, false) != NULL)
+	{
+		free_func_call_data(call);
+		return ERR_SEMANTIC_UNDEF_REDEF;
+	}
+
 	if (!str_add_const(&call->func_name, name))
 	{
 		free_func_call_data(call);
