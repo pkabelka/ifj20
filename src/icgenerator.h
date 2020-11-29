@@ -20,12 +20,6 @@ typedef enum
 	SYM_FLOAT64
 } symbol_type;
 
-typedef struct
-{
-	char type;
-	char* name;
-} var_data_t;
-
 typedef struct 
 {
 	symbol_type sym_type;
