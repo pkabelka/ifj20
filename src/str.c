@@ -133,3 +133,10 @@ int str_cmp_const(string *s1, const char *s2)
 {
     return strcmp(s1->str, s2);
 }
+
+void str_swap(string *s1, string *s2)
+{
+    string tmp = *s1;
+    *s1 = *s2;
+    *s2 = tmp;
+}

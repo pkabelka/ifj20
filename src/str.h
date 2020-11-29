@@ -98,4 +98,11 @@ int str_cmp(string *s1, string *s2);
  */
 int str_cmp_const(string *s1, const char *s2);
 
+/**
+ * @brief Swaps the two strings
+ * @param s1 Pointer to the first string
+ * @param s2 Pointer to the second string
+ */
+void str_swap(string *s1, string *s2);
+
 #endif
