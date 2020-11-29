@@ -47,5 +47,5 @@ int main()
     str_free(&func_declarations);
     str_free(&func_body);
 
-    return 0;
+    return result;
 }
