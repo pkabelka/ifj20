@@ -689,7 +689,18 @@ static int assignment(data_t *data)
 	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
-	GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+
+	dll_node_t *tmp = data->assign_list->first;
+	unsigned long i = 0;
+	while (tmp != NULL)
+	{
+		if (data->assign_func)
+		{
+			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
+		}
+		GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+		tmp = tmp->next;
+	}
 
 	dll_clear(data->assign_list, stack_nofree);
 	return 0;
@@ -735,9 +746,7 @@ static int reassignment(data_t *data)
 	}
 	if (data->assign_for)
 	{
-		string tmp_swap = ifjcode20_output;
-		ifjcode20_output = for_assigns;
-		for_assigns = tmp_swap;
+		str_swap(&ifjcode20_output, &for_assigns);
 		data->assign_for = false;
 		data->assign_for_swap_output = false;
 		string *tmp_push = malloc(sizeof(string));
@@ -948,6 +957,8 @@ static int end_of_cycle(data_t *data)
 	if (TKN.type == TOKEN_CURLY_OPEN) //empty
 	{
 		EXPECT_NEXT_TOKEN(TOKEN_EOL)
+		data->assign_for = false;
+		data->assign_for_swap_output = false;
 		APPLY_NEXT_RULE(scope)
 		EXPECT_NEXT_TOKEN(TOKEN_EOL)
 		return 0;
