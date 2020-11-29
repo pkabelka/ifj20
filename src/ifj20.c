@@ -16,6 +16,8 @@ int main()
     GEN(init_data, &data);
     GEN(gen_codegen_init);
     GEN(str_init, &for_assigns);
+    GEN(str_init, &func_declarations);
+    GEN(str_init, &func_body);
 
     int result = parse(&data);
     if (result != 0)
@@ -42,6 +44,8 @@ int main()
     str_free(&s);
     str_free(&ifjcode20_output);
     str_free(&for_assigns);
+    str_free(&func_declarations);
+    str_free(&func_body);
 
     return 0;
 }

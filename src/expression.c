@@ -194,7 +194,7 @@ int expression(data_t *data)
 						tmp_tok.type = TOKEN_IDENTIFIER;
 						tmp_tok.attr.str = &((var_data_t*)((symbol_t*)tmp->data)->data)->name;
 						CODE_INT("PUSHS ");
-						GEN(gen_token_value, &tmp_tok);
+						GEN(gen_token_value, &tmp_tok); CODE("%%"); CODE_NUM(((var_data_t*)((symbol_t*)tmp->data)->data)->scope_idx);
 						CODE_INT("\n");
 						break;
 					default:
@@ -202,8 +202,6 @@ int expression(data_t *data)
 				}
 				tmp = tmp->next;
 			}
-			// CODE_INT("POPS GF@%%res\n");
-			// CODE_INT("BREAK\n");
 		}
 	}
 

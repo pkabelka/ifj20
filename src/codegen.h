@@ -47,6 +47,8 @@
 
 extern string ifjcode20_output;
 extern string for_assigns;
+extern string func_declarations;
+extern string func_body;
 
 bool gen_codegen_init();
 bool gen_codegen_output();
@@ -59,13 +61,15 @@ bool gen_func_begin(const char *id);
 bool gen_func_def_retval(unsigned long idx, keyword kw);
 bool gen_func_set_retval(unsigned long idx);
 bool gen_defvar(char *id);
+bool gen_defvar_str(char *id, unsigned long idx, string *str);
 bool gen_pop(char *arg_id, char *frame);
+bool gen_pop_idx(char *id, char *frame, unsigned long idx);
 bool gen_get_retval(char *id, char *frame, unsigned long idx);
 bool gen_func_arg(char *arg_id, unsigned long idx);
 bool gen_func_call(const char *id);
 bool gen_token_value(token *tok);
 bool gen_func_call_arg(unsigned long idx, token *tok);
-bool gen_func_arg_push(token *tok);
+bool gen_func_arg_push(token *tok, unsigned long idx);
 bool gen_func_return(const char *id);
 bool gen_func_end(const char *id);
 bool gen_create_frame();

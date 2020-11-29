@@ -73,6 +73,7 @@ bool init_data(data_t *data)
 	data->assign_func = false;
 	data->assign_for = false;
 	data->assign_for_swap_output = false;
+	data->scope_idx = 0;
 
 	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
@@ -229,9 +230,16 @@ int parse(data_t *data)
 			APPLY_NEXT_RULE(func_header)
 			APPLY_NEXT_RULE(_scope_);
 			APPLY_RULE(close_scope)
+
 			GEN(gen_func_end, data->fdata->name.str);
+			str_swap(&ifjcode20_output, &func_body);
+			GEN(str_add_str, &ifjcode20_output, &func_declarations); // append function declarations
+			GEN(str_add_str, &ifjcode20_output, &func_body); // append function body
+			str_clear(&func_declarations);
+			str_clear(&func_body);
 			data->arg_idx = 0;
 			data->label_idx = 0;
+			data->scope_idx = 0;
 
 			if (!data->fdata->used_return)
 				return ERR_SEMANTIC_OTHER;
@@ -275,6 +283,7 @@ static int func_header(data_t *data)
 		return ERR_SYNTAX;
 
 	GEN(gen_func_begin, data->fdata->name.str);
+	str_swap(&ifjcode20_output, &func_body);
 
 	NEXT_TOKEN()
 	if (TKN.type != TOKEN_PAR_CLOSE) //1+ args
@@ -473,7 +482,7 @@ static int func_calling(data_t *data)
 					dll_node_t *tmp = data->arg_list->first;
 					while (tmp != NULL)
 					{
-						GEN(gen_func_arg_push, (token*)tmp->data);
+						GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
 						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
 						{
 							str_free(((token*)tmp->data)->attr.str);
@@ -483,7 +492,7 @@ static int func_calling(data_t *data)
 					token tmp_token;
 					tmp_token.type = TOKEN_INT;
 					tmp_token.attr.int_val = data->arg_list->size;
-					GEN(gen_func_arg_push, &tmp_token);
+					GEN(gen_func_arg_push, &tmp_token, data->scope_idx);
 					dll_dispose(data->arg_list, free);
 					data->arg_list = dll_init();
 				}
@@ -538,7 +547,16 @@ static int func_calling(data_t *data)
 					dll_node_t *tmp = data->arg_list->first;
 					while (tmp != NULL)
 					{
-						GEN(gen_func_arg_push, (token*)tmp->data);
+						if (((token*)tmp->data)->type == TOKEN_IDENTIFIER)
+						{
+							var_data_t *vd = find_var(data, ((token*)tmp->data)->attr.str->str, false);
+							GEN(gen_func_arg_push, (token*)tmp->data, vd->scope_idx);
+						}
+						else
+						{
+							GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
+						}
+						// GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
 						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
 						{
 							str_free(((token*)tmp->data)->attr.str);
@@ -548,7 +566,7 @@ static int func_calling(data_t *data)
 					token tmp_token;
 					tmp_token.type = TOKEN_INT;
 					tmp_token.attr.int_val = data->arg_list->size;
-					GEN(gen_func_arg_push, &tmp_token);
+					GEN(gen_func_arg_push, &tmp_token, data->scope_idx);
 					dll_dispose(data->arg_list, free);
 					data->arg_list = dll_init();
 				}
@@ -646,7 +664,7 @@ static int assignment(data_t *data)
 			stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_table.top->data), assign->name.str, &err);
 			if (ptr == NULL)
 				return ERR_INTERNAL;
-			GEN(gen_defvar, assign->name.str);
+			GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
 
 			assign->type = 't';
 			ptr->data = assign;
@@ -659,7 +677,7 @@ static int assignment(data_t *data)
 	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
-	GEN(gen_pop, data->vdata->name.str, "LF");
+	GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
 
 	dll_clear(data->assign_list, stack_nofree);
 	return 0;
@@ -696,7 +714,7 @@ static int reassignment(data_t *data)
 		{
 			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
 		}
-		GEN(gen_pop, ((var_data_t*)tmp->data)->name.str, "LF");
+		GEN(gen_pop_idx, ((var_data_t*)tmp->data)->name.str, "LF", ((var_data_t*)tmp->data)->scope_idx);
 		tmp = tmp->next;
 	}
 	if (data->assign_func)
@@ -1134,6 +1152,7 @@ static int new_scope(data_t *data)
 	*zero = 0;
 
 	stack_push(&data->aux, zero);
+	data->scope_idx++;
 	return 0;
 }
 
@@ -1141,6 +1160,7 @@ static int close_scope(data_t *data)
 {
 	stack_pop(&data->aux, free);
 	stack_pop(&data->var_table, free_local_scope);
+	data->scope_idx--;
 	return 0;
 }
 
@@ -1356,6 +1376,7 @@ static bool add_to_assign_list(data_t *data, token token)
 		}
 
 		vd->type = tkn_to_char(token);
+		vd->scope_idx = data->scope_idx;
 		if (!dll_insert_last(data->assign_list, vd))
 		{
 			free_var_data(vd);

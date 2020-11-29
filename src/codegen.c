@@ -8,6 +8,8 @@
 
 string ifjcode20_output;
 string for_assigns;
+string func_declarations;
+string func_body;
 
 bool gen_output_header()
 {
@@ -97,9 +99,23 @@ bool gen_defvar(char *id)
     return true;
 }
 
+bool gen_defvar_str(char *id, unsigned long idx, string *s)
+{
+    str_swap(&ifjcode20_output, s);
+    CODE("DEFVAR LF@", id, "%%"); CODE_NUM(idx); CODE("\n"); // DEFVAR LF@id%idx
+    str_swap(&ifjcode20_output, s);
+    return true;
+}
+
 bool gen_pop(char *id, char *frame)
 {
     CODE("POPS ", frame, "@", id, "\n");
+    return true;
+}
+
+bool gen_pop_idx(char *id, char *frame, unsigned long idx)
+{
+    CODE("POPS ", frame, "@", id, "%%"); CODE_NUM(idx); CODE("\n");
     return true;
 }
 
@@ -168,9 +184,14 @@ bool gen_func_call_arg(unsigned long idx, token *tok)
     return true;
 }
 
-bool gen_func_arg_push(token *tok)
+bool gen_func_arg_push(token *tok, unsigned long idx)
 {
-    CODE("PUSHS "); GEN(gen_token_value, tok); CODE("\n"); // PUSHS type@value
+    CODE("PUSHS "); GEN(gen_token_value, tok); // PUSHS type@value
+    if (tok->type == TOKEN_IDENTIFIER)
+    {
+        CODE("%%"); CODE_NUM(idx);
+    }
+    CODE("\n");
     return true;
 }
 

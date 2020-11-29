@@ -32,6 +32,7 @@ typedef struct
 {
 	char type;
 	string name;
+	unsigned long scope_idx;
 } var_data_t;
 
 /**
@@ -67,6 +68,7 @@ typedef struct
 	bool assign_for;
 	bool assign_for_swap_output;
 	stack for_assign;
+	unsigned long scope_idx;
 } data_t;
 
 /**
