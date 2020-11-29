@@ -429,13 +429,8 @@ static int call_func(data_t *data)
 	else
 		name = data->prev_token.attr.str->str;
 
-<<<<<<< HEAD
-	//checking if name is of function is used as variable name
-	if (find_var(&data->var_table, name, false) != NULL)
-=======
 	//checking if name of the function is used as variable name
 	if (find_var(data, name, false) != NULL)
->>>>>>> 88758a4b6cd26a42b17a30e13bb2c4b4526863dc
 	{
 		free_func_call_data(call);
 		return ERR_SEMANTIC_UNDEF_REDEF;
