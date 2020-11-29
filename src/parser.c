@@ -240,6 +240,7 @@ int parse(data_t *data)
 			data->arg_idx = 0;
 			data->label_idx = 0;
 			data->scope_idx = 0;
+			stack_dispose(&data->var_table, free_local_scope); // dispose all scopes at the end of a function
 
 			if (!data->fdata->used_return)
 				return ERR_SEMANTIC_OTHER;
@@ -677,7 +678,29 @@ static int assignment(data_t *data)
 			stnode_ptr ptr = symtable_insert(((stnode_ptr*)data->var_table.top->data), assign->name.str, &err);
 			if (ptr == NULL)
 				return ERR_INTERNAL;
-			GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
+
+			// Check if the variable is declared in the same scope_idx but different scope
+			bool declared = false;
+			struct stack_el *elem = data->var_table.top;
+			while (elem != NULL)
+			{
+				stnode_ptr bst = *(stnode_ptr*)elem->data;
+				stnode_ptr var_ptr = symtable_search(bst, assign->name.str);
+				if (var_ptr != NULL && var_ptr->data != NULL)
+				{
+					if (((var_data_t*)var_ptr->data)->scope_idx == assign->scope_idx)
+					{
+						declared = true;
+						break;
+					}
+				}
+				elem = elem->next;
+			}
+
+			if (!declared)
+			{
+				GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
+			}
 
 			assign->type = 't';
 			ptr->data = assign;
@@ -690,7 +713,18 @@ static int assignment(data_t *data)
 	data->fix_call = false;
 	data->result = end_of_assignment(data, data->assign_list->first);
 	CHECK_RESULT()
-	GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+
+	dll_node_t *tmp = data->assign_list->first;
+	unsigned long i = 0;
+	while (tmp != NULL)
+	{
+		if (data->assign_func)
+		{
+			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
+		}
+		GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+		tmp = tmp->next;
+	}
 
 	dll_clear(data->assign_list, stack_nofree);
 	return 0;
@@ -736,9 +770,7 @@ static int reassignment(data_t *data)
 	}
 	if (data->assign_for)
 	{
-		string tmp_swap = ifjcode20_output;
-		ifjcode20_output = for_assigns;
-		for_assigns = tmp_swap;
+		str_swap(&ifjcode20_output, &for_assigns);
 		data->assign_for = false;
 		data->assign_for_swap_output = false;
 		string *tmp_push = malloc(sizeof(string));
@@ -912,9 +944,12 @@ static int cycle(data_t *data)
 			APPLY_NEXT_RULE(end_of_cycle)
 			APPLY_RULE(close_scope)
 
-			str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-			str_free((string*)data->for_assign.top->data);
-			stack_pop(&data->for_assign, free);
+			if (data->for_assign.top != NULL)
+			{
+				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+				str_free((string*)data->for_assign.top->data);
+				stack_pop(&data->for_assign, free);
+			}
 			GEN(gen_endfor, data->fdata->name.str, curr_idx);
 			return 0;
 		}
@@ -936,9 +971,12 @@ static int cycle(data_t *data)
 				APPLY_NEXT_RULE(end_of_cycle)
 				APPLY_RULE(close_scope)
 
-				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-				str_free((string*)data->for_assign.top->data);
-				stack_pop(&data->for_assign, free);
+				if (data->for_assign.top != NULL)
+				{
+					str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+					str_free((string*)data->for_assign.top->data);
+					stack_pop(&data->for_assign, free);
+				}
 				GEN(gen_endfor, data->fdata->name.str, curr_idx);
 				return 0;
 			}
@@ -952,6 +990,8 @@ static int end_of_cycle(data_t *data)
 	if (TKN.type == TOKEN_CURLY_OPEN) //empty
 	{
 		EXPECT_NEXT_TOKEN(TOKEN_EOL)
+		data->assign_for = false;
+		data->assign_for_swap_output = false;
 		APPLY_NEXT_RULE(scope)
 		EXPECT_NEXT_TOKEN(TOKEN_EOL)
 		return 0;
@@ -1181,7 +1221,9 @@ static int new_scope(data_t *data)
 static int close_scope(data_t *data)
 {
 	stack_pop(&data->aux, free);
-	stack_pop(&data->var_table, free_local_scope);
+	// The next statement is commented because we don't want to free the
+	// scope so we can check for variable declarations at the same scope index
+	// stack_pop(&data->var_table, free_local_scope);
 	data->scope_idx--;
 	return 0;
 }
@@ -1500,7 +1542,7 @@ static int check_ret_vals(data_t *data, char type, unsigned int n)
 	if (cmp == c)
 		return 0;
 	
-	return ERR_SEMANTIC_TYPE_COMPAT; //return bad data type
+	return ERR_SEMANTIC_FUNC_PARAMS; //return bad data type
 }
 
 static bool compare_list_of_types(string expected, string sent)
