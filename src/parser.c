@@ -1527,7 +1527,7 @@ static int check_ret_vals(data_t *data, char type, unsigned int n)
 	if (cmp == c)
 		return 0;
 	
-	return ERR_SEMANTIC_TYPE_COMPAT; //return bad data type
+	return ERR_SEMANTIC_FUNC_PARAMS; //return bad data type
 }
 
 static bool compare_list_of_types(string expected, string sent)
