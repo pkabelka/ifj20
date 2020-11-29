@@ -902,9 +902,12 @@ static int cycle(data_t *data)
 			APPLY_NEXT_RULE(end_of_cycle)
 			APPLY_RULE(close_scope)
 
-			str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-			str_free((string*)data->for_assign.top->data);
-			stack_pop(&data->for_assign, free);
+			if (data->for_assign.top != NULL)
+			{
+				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+				str_free((string*)data->for_assign.top->data);
+				stack_pop(&data->for_assign, free);
+			}
 			GEN(gen_endfor, data->fdata->name.str, curr_idx);
 			return 0;
 		}
@@ -926,9 +929,12 @@ static int cycle(data_t *data)
 				APPLY_NEXT_RULE(end_of_cycle)
 				APPLY_RULE(close_scope)
 
-				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-				str_free((string*)data->for_assign.top->data);
-				stack_pop(&data->for_assign, free);
+				if (data->for_assign.top != NULL)
+				{
+					str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
+					str_free((string*)data->for_assign.top->data);
+					stack_pop(&data->for_assign, free);
+				}
 				GEN(gen_endfor, data->fdata->name.str, curr_idx);
 				return 0;
 			}
