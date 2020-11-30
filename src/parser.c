@@ -75,6 +75,7 @@ bool init_data(data_t *data)
 	data->assign_for_swap_output = false;
 	data->scope_idx = 0;
 	data->allow_reassign = true;
+	data->allow_relations = false;
 
 	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
@@ -1062,91 +1063,12 @@ static int end_of_cycle(data_t *data)
 
 static int condition(data_t *data)
 {
-	var_data_t *aux1 = create_aux_var(data);
-	if (aux1 == NULL)
-		return ERR_INTERNAL;
-	data->vdata = aux1;	
-
+	data->vdata = NULL;	//results in expecting type 't'
 	data->allow_func = false;
-	APPLY_RULE_ERR(expression)
-	{
-		free_var_data(aux1);
-		RET()
-	}
-	switch (TKN.type)
-	{
-		case TOKEN_EQUAL: case TOKEN_NOT_EQUAL: 
-		case TOKEN_LESS_OR_EQUAL: case TOKEN_LESS_THAN:
-		case TOKEN_GREATER_OR_EQUAL: case TOKEN_GREATER_THAN:
-			break;
-		default:
-			return ERR_SYNTAX;
-	}
-	token_type rel_op = TKN.type;
-
-	var_data_t *aux2 = create_aux_var(data);
-	if (aux2 == NULL)
-	{
-		free_var_data(aux1);
-		return ERR_INTERNAL;
-	}
-	data->vdata = aux2;
-
-	data->allow_func = false;
-	APPLY_NEXT_RULE_ERR(expression)
-	{
-		free_var_data(aux1);
-		free_var_data(aux2);
-		RET()
-	}
-
-	if (compare_types(aux1->type, aux2->type) == '0')
-		return ERR_SEMANTIC_TYPE_COMPAT;
-
-	free_var_data(aux1);
-	free_var_data(aux2);
-
-	switch (rel_op)
-	{
-		case TOKEN_EQUAL:
-			CODE_INT("EQS\n");
-			break;
-		case TOKEN_NOT_EQUAL:
-			CODE_INT("EQS\nNOTS\n");
-			break;
-		case TOKEN_LESS_THAN:
-			CODE_INT("LTS\n");
-			break;
-		case TOKEN_LESS_OR_EQUAL:
-			CODE_INT("POPS GF@%%tmp0\n"\
-					"POPS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"LTS\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"EQS\n"\
-					"ORS\n");
-			break;
-		case TOKEN_GREATER_THAN:
-			CODE_INT("GTS\n");
-			break;
-		case TOKEN_GREATER_OR_EQUAL:
-			CODE_INT("POPS GF@%%tmp0\n"\
-					"POPS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"GTS\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"EQS\n"\
-					"ORS\n");
-			break;
-		default:
-			break;
-	}
+	data->allow_relations = true;
+	APPLY_RULE(expression)
+	data->allow_relations = false;
 	GEN(gen_pop, "%%res", "GF");
-
 	return 0;
 }
 
