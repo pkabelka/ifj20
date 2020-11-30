@@ -376,9 +376,10 @@ static int func_args(data_t *data)
 			free_var_data(vd);
 			return ERR_INTERNAL;
 		}
+		vd->scope_idx = data->scope_idx;
 		ptr->data = vd;
 
-		GEN(gen_func_arg, vd->name.str, data->arg_idx);
+		GEN(gen_func_arg, vd->name.str, data->arg_idx, vd->scope_idx);
 		data->arg_idx++;
 
 		NEXT_TOKEN()
@@ -480,6 +481,8 @@ static int func_calling(data_t *data)
 {
 	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
+		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
+			return ERR_SEMANTIC_OTHER;
 		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
 		{
 			token *tmp_token = malloc(sizeof(token));
@@ -492,9 +495,10 @@ static int func_calling(data_t *data)
 		}
 		else
 		{
-			if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
-				return ERR_SEMANTIC_OTHER;
-			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
+			var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
+			if (vd == NULL) //used undefined variable
+				return ERR_SEMANTIC_UNDEF_REDEF;
+			GEN(gen_func_call_arg_idx, data->arg_idx++, &TKN, vd->scope_idx);
 		}
 
 		NEXT_TOKEN()
