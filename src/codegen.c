@@ -22,6 +22,8 @@ bool gen_output_header()
 "MOVE GF@%%tmp1 int@0\n"\
 "DEFVAR GF@%%tmp2\n"\
 "MOVE GF@%%tmp2 int@0\n"\
+"DEFVAR GF@%%void\n"\
+"MOVE GF@%%void int@0\n"\
 "JUMP $$main\n");
     GEN_BOOL(gen_builtin_functions);
     return true;

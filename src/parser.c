@@ -722,7 +722,15 @@ static int assignment(data_t *data)
 		{
 			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
 		}
-		GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+		if (data->vdata == NULL)
+		{
+			GEN(gen_pop, "%%void", "GF");
+		}
+		else
+		{
+			GEN(gen_pop_idx, data->vdata->name.str, "LF", data->vdata->scope_idx);
+		}
+		
 		tmp = tmp->next;
 	}
 
@@ -761,7 +769,15 @@ static int reassignment(data_t *data)
 		{
 			CODE_INT("PUSHS TF@%%retval"); CODE_NUM(i++); CODE_INT("\n");
 		}
-		GEN(gen_pop_idx, ((var_data_t*)tmp->data)->name.str, "LF", ((var_data_t*)tmp->data)->scope_idx);
+		if (*((var_data_t*)tmp->data)->name.str == '_')
+		{
+			GEN(gen_pop, "%%void", "GF");
+		}
+		else
+		{
+			GEN(gen_pop_idx, ((var_data_t*)tmp->data)->name.str, "LF", ((var_data_t*)tmp->data)->scope_idx);
+		}
+		
 		tmp = tmp->next;
 	}
 	if (data->assign_func)
@@ -1200,6 +1216,18 @@ static int new_scope(data_t *data)
 		return ERR_INTERNAL;
 
 	symtable_init(local_scope);
+
+	var_data_t *assign = malloc(sizeof(var_data_t));
+	str_init(&assign->name);
+	str_add(&assign->name, '_');
+	assign->type = 't';
+	assign->scope_idx = data->scope_idx;
+	bool err;
+	stnode_ptr ptr = symtable_insert(local_scope, "_", &err);
+	if (ptr == NULL || err)
+		return ERR_INTERNAL;
+	ptr->data = assign;
+
 	if (!stack_push(&data->var_table, local_scope))
 	{
 		free(local_scope);
@@ -1416,37 +1444,45 @@ static char tkn_to_char(token token)
 
 static bool add_to_assign_list(data_t *data, token token)
 {	
+	var_data_t *vd = malloc(sizeof(var_data_t));
+	if (vd == NULL)
+		return false;
+
+	if (!str_init(&vd->name))
+	{
+		str_free(token.attr.str);
+		free(vd);
+		return false;
+	}
+
 	if (token.attr.kw == KW_UNDERSCORE)
 	{
-		if (!dll_insert_last(data->assign_list, NULL))
+		if (!str_add(&vd->name, '_'))
+		{
+			str_free(token.attr.str);
+			free_var_data(vd);
 			return false;
+		}
 	}
 	else
 	{
-		var_data_t *vd = malloc(sizeof(var_data_t));
-		if (vd == NULL)
-			return false;
-
-		if (!str_init(&vd->name))
-		{
-			free(vd);
-			return false;
-		}
-
 		if (!str_add_const(&vd->name, token.attr.str->str))
 		{
+			str_free(token.attr.str);
 			free_var_data(vd);
 			return false;
 		}
-
-		vd->type = tkn_to_char(token);
-		vd->scope_idx = data->scope_idx;
-		if (!dll_insert_last(data->assign_list, vd))
-		{
-			free_var_data(vd);
-			return false;
-		}	
 	}
+
+
+	vd->type = tkn_to_char(token);
+	vd->scope_idx = data->scope_idx;
+
+	if (!dll_insert_last(data->assign_list, vd))
+	{
+		free_var_data(vd);
+		return false;
+	}	
 	return true;
 }
 
