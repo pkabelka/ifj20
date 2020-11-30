@@ -250,7 +250,7 @@ int parse(data_t *data)
 			stack_dispose(&data->defvar_table, free_local_scope); // dispose all scopes at the end of a function
 
 			if (!data->fdata->used_return)
-				return ERR_SEMANTIC_OTHER;
+				return ERR_SEMANTIC_FUNC_PARAMS;
 		}
 		else if (TKN.type != TOKEN_EOL && TKN.type != TOKEN_EOF)
 			return ERR_SYNTAX;
@@ -839,7 +839,7 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 	{
 		NEXT_TOKEN()
 		if (node->next == NULL) //L < R
-			return ERR_SEMANTIC_FUNC_PARAMS;
+			return ERR_SEMANTIC_OTHER;
 
 		if (TKN.type == TOKEN_EOL)
 			return ERR_SYNTAX;
