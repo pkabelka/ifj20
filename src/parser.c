@@ -74,6 +74,7 @@ bool init_data(data_t *data)
 	data->assign_for = false;
 	data->assign_for_swap_output = false;
 	data->scope_idx = 0;
+	data->allow_reassign = true;
 
 	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
@@ -891,7 +892,7 @@ static int list_of_vars(data_t *data)
 			APPLY_NEXT_RULE(assignment)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_REASSIGN)
+		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
 		{
 			APPLY_NEXT_RULE(reassignment)
 			return 0;
@@ -952,7 +953,7 @@ static int func_or_list_of_vars(data_t *data)
 			APPLY_NEXT_RULE(assignment)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_REASSIGN)
+		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
 		{
 			APPLY_NEXT_RULE(reassignment)
 			return 0;
@@ -991,7 +992,9 @@ static int cycle(data_t *data)
 	else if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
 		data->allow_assign = true;
+		data->allow_reassign = false;
 		APPLY_RULE(list_of_vars)
+		data->allow_reassign = true;
 		GEN(gen_for_start, data->fdata->name.str, curr_idx);
 
 		if (TKN.type == TOKEN_SEMICOLON)
