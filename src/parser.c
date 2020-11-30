@@ -77,6 +77,7 @@ bool init_data(data_t *data)
 
 	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
+	stack_init(&data->defvar_table);
 	stack_init(&data->calls);
 	stack_init(&data->aux);
 	symtable_init(&data->func_table);
@@ -88,6 +89,7 @@ bool init_data(data_t *data)
 		symtable_dispose(&data->func_table, free_func_data);
 		stack_dispose(&data->calls, free_func_call_data);
 		stack_dispose(&data->var_table, free_local_scope);
+		stack_dispose(&data->defvar_table, free_local_scope);
 		stack_dispose(&data->aux, free);
 		return false;
 	}
@@ -106,6 +108,7 @@ void dispose_data(data_t *data)
 	symtable_dispose(&data->func_table, free_func_data);
 	stack_dispose(&data->calls, free_func_call_data);
 	stack_dispose(&data->var_table, free_local_scope);
+	stack_dispose(&data->defvar_table, free_local_scope);
 	stack_dispose(&data->aux, free);
 	stack_dispose(&data->for_assign, free);
 	dll_dispose(data->assign_list, stack_nofree);
@@ -241,6 +244,7 @@ int parse(data_t *data)
 			data->label_idx = 0;
 			data->scope_idx = 0;
 			stack_dispose(&data->var_table, free_local_scope); // dispose all scopes at the end of a function
+			stack_dispose(&data->defvar_table, free_local_scope); // dispose all scopes at the end of a function
 
 			if (!data->fdata->used_return)
 				return ERR_SEMANTIC_OTHER;
@@ -683,7 +687,7 @@ static int assignment(data_t *data)
 
 			// Check if the variable is declared in the same scope_idx but different scope
 			bool declared = false;
-			struct stack_el *elem = data->var_table.top;
+			struct stack_el *elem = data->defvar_table.top;
 			while (elem != NULL)
 			{
 				stnode_ptr bst = *(stnode_ptr*)elem->data;
@@ -701,7 +705,17 @@ static int assignment(data_t *data)
 
 			if (!declared)
 			{
-				GEN(gen_defvar_str, assign->name.str, assign->scope_idx, &func_declarations);
+				bool err;
+				stnode_ptr defvar_ptr = symtable_insert(((stnode_ptr*)data->defvar_table.top->data), assign->name.str, &err);
+				if (defvar_ptr == NULL)
+					return ERR_INTERNAL;
+				var_data_t *assign_copy = malloc(sizeof(var_data_t));
+				assign_copy->type = assign->type;
+				assign_copy->scope_idx = assign->scope_idx;
+				str_init(&assign_copy->name);
+				str_copy(&assign->name, &assign_copy->name);
+				defvar_ptr->data = assign_copy;
+				GEN(gen_defvar_str, assign_copy->name.str, assign_copy->scope_idx, &func_declarations);
 			}
 
 			assign->type = 't';
@@ -1236,6 +1250,30 @@ static int new_scope(data_t *data)
 		return ERR_INTERNAL;
 	}
 
+	// Local (function) symtable with all scope declarations for DEFVAR generation
+	stnode_ptr *defvar_local_scope = malloc(sizeof(stnode_ptr));
+	if (defvar_local_scope == NULL)
+		return ERR_INTERNAL;
+
+	symtable_init(defvar_local_scope);
+
+	var_data_t *defvar_assign = malloc(sizeof(var_data_t));
+	str_init(&defvar_assign->name);
+	str_add(&defvar_assign->name, '_');
+	defvar_assign->type = 't';
+	defvar_assign->scope_idx = data->scope_idx;
+	bool defvar_err;
+	stnode_ptr defvar_ptr = symtable_insert(defvar_local_scope, "_", &defvar_err);
+	if (defvar_ptr == NULL || defvar_err)
+		return ERR_INTERNAL;
+	defvar_ptr->data = defvar_assign;
+
+	if (!stack_push(&data->defvar_table, defvar_local_scope))
+	{
+		free(defvar_local_scope);
+		return ERR_INTERNAL;
+	}
+
 	data->allow_assign = true;
 
 	int *zero = malloc(sizeof(int));
@@ -1251,9 +1289,7 @@ static int new_scope(data_t *data)
 static int close_scope(data_t *data)
 {
 	stack_pop(&data->aux, free);
-	// The next statement is commented because we don't want to free the
-	// scope so we can check for variable declarations at the same scope index
-	// stack_pop(&data->var_table, free_local_scope);
+	stack_pop(&data->var_table, free_local_scope);
 	data->scope_idx--;
 	return 0;
 }

@@ -52,6 +52,7 @@ typedef struct
 
 	stnode_ptr func_table; //BST of functins
 	stack var_table;	   //symbol table for variables (stack of BSTs)
+	stack defvar_table;	   //symbol table for variables declarations (stack of BSTs)
 	stack calls;		   //stack of all function calls
 
 	stack aux; //stack for counting auxiliary variables
