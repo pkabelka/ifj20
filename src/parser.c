@@ -463,7 +463,7 @@ static int call_func(data_t *data)
 
 static int func_calling(data_t *data)
 {
-	if (TKN.type == TOKEN_IDENTIFIER)
+	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
 		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
 		{
@@ -477,6 +477,8 @@ static int func_calling(data_t *data)
 		}
 		else
 		{
+			if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
+				return ERR_SEMANTIC_OTHER;
 			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
 		}
 
