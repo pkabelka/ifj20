@@ -100,6 +100,8 @@ int expression(data_t *data)
 	{
 		if (data->used_relations && !data->allow_relations)
 			r = ERR_SEMANTIC_TYPE_COMPAT;
+		else if (!data->used_relations && data->allow_relations)
+			r = ERR_SEMANTIC_TYPE_COMPAT;
 		else
 		{
 			//TODO: generate internal code and optimize
@@ -189,7 +191,7 @@ static int end_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 		case TOKEN_LESS_OR_EQUAL: case TOKEN_LESS_THAN:
 		case TOKEN_GREATER_OR_EQUAL: case TOKEN_GREATER_THAN:
 			if (data->used_relations) //relational operators was used more that once
-				return ERR_SEMANTIC_OTHER;
+				return ERR_SEMANTIC_TYPE_COMPAT;
 			data->used_relations = true;
 
 			data->result = push_o(TKN, list, sym_stack);
