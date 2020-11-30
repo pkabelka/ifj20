@@ -220,8 +220,10 @@ int parse(data_t *data)
 		return ERR_SYNTAX;
 
 	NEXT_TOKEN()
-	if (TKN.type != TOKEN_IDENTIFIER && !str_cmp_const(TKN.attr.str, "main"))
-		return ERR_SEMANTIC_OTHER;
+	if (TKN.type != TOKEN_IDENTIFIER)
+		return ERR_SYNTAX;
+	if (str_cmp_const(TKN.attr.str, "main") != 0)
+		return ERR_SYNTAX;
 	
 	//parsing all functions
 	while (TKN.type != TOKEN_EOF)
