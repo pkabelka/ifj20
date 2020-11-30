@@ -256,8 +256,16 @@ int parse(data_t *data)
 			return ERR_SYNTAX;
 	}
 
-	if (symtable_search(data->func_table, "main") == NULL)
+	//checking definition of main
+	stnode_ptr node = symtable_search(data->func_table, "main");
+	if (node == NULL)
 		return ERR_SEMANTIC_UNDEF_REDEF;
+
+	func_data_t *fd = (func_data_t*)node->data;
+	if (fd->args_types.len > 0)
+		return ERR_SEMANTIC_FUNC_PARAMS;
+	if (fd->ret_val_types.len > 0)
+		return ERR_SEMANTIC_FUNC_PARAMS;
 
 	return check_func_calls(data);
 }
