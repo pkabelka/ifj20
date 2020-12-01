@@ -74,6 +74,8 @@ bool init_data(data_t *data)
 	data->assign_for = false;
 	data->assign_for_swap_output = false;
 	data->scope_idx = 0;
+	data->allow_reassign = true;
+	data->allow_relations = false;
 
 	stack_init(&data->for_assign);
 	stack_init(&data->var_table);
@@ -220,8 +222,10 @@ int parse(data_t *data)
 		return ERR_SYNTAX;
 
 	NEXT_TOKEN()
-	if (TKN.type != TOKEN_IDENTIFIER && !str_cmp_const(TKN.attr.str, "main"))
-		return ERR_SEMANTIC_OTHER;
+	if (TKN.type != TOKEN_IDENTIFIER)
+		return ERR_SYNTAX;
+	if (str_cmp_const(TKN.attr.str, "main") != 0)
+		return ERR_SYNTAX;
 	
 	//parsing all functions
 	while (TKN.type != TOKEN_EOF)
@@ -247,14 +251,22 @@ int parse(data_t *data)
 			stack_dispose(&data->defvar_table, free_local_scope); // dispose all scopes at the end of a function
 
 			if (!data->fdata->used_return)
-				return ERR_SEMANTIC_OTHER;
+				return ERR_SEMANTIC_FUNC_PARAMS;
 		}
 		else if (TKN.type != TOKEN_EOL && TKN.type != TOKEN_EOF)
 			return ERR_SYNTAX;
 	}
 
-	if (symtable_search(data->func_table, "main") == NULL)
+	//checking definition of main
+	stnode_ptr node = symtable_search(data->func_table, "main");
+	if (node == NULL)
 		return ERR_SEMANTIC_UNDEF_REDEF;
+
+	func_data_t *fd = (func_data_t*)node->data;
+	if (fd->args_types.len > 0)
+		return ERR_SEMANTIC_FUNC_PARAMS;
+	if (fd->ret_val_types.len > 0)
+		return ERR_SEMANTIC_FUNC_PARAMS;
 
 	return check_func_calls(data);
 }
@@ -365,9 +377,10 @@ static int func_args(data_t *data)
 			free_var_data(vd);
 			return ERR_INTERNAL;
 		}
+		vd->scope_idx = data->scope_idx;
 		ptr->data = vd;
 
-		GEN(gen_func_arg, vd->name.str, data->arg_idx);
+		GEN(gen_func_arg, vd->name.str, data->arg_idx, vd->scope_idx);
 		data->arg_idx++;
 
 		NEXT_TOKEN()
@@ -469,6 +482,8 @@ static int func_calling(data_t *data)
 {
 	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
+		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
+			return ERR_SEMANTIC_OTHER;
 		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
 		{
 			token *tmp_token = malloc(sizeof(token));
@@ -481,9 +496,10 @@ static int func_calling(data_t *data)
 		}
 		else
 		{
-			if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
-				return ERR_SEMANTIC_OTHER;
-			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
+			var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
+			if (vd == NULL) //used undefined variable
+				return ERR_SEMANTIC_UNDEF_REDEF;
+			GEN(gen_func_call_arg_idx, data->arg_idx++, &TKN, vd->scope_idx);
 		}
 
 		NEXT_TOKEN()
@@ -600,6 +616,13 @@ static int func_calling(data_t *data)
 	}
 	else if (TKN.type == TOKEN_PAR_CLOSE && data->prev_token.type != TOKEN_COMMA)
 	{
+		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		{
+			token tmp_token;
+			tmp_token.type = TOKEN_INT;
+			tmp_token.attr.int_val = 0;
+			GEN(gen_func_arg_push, &tmp_token, data->scope_idx);
+		}
 		NEXT_TOKEN()
 		return 0;
 	}
@@ -836,7 +859,7 @@ static int end_of_assignment(data_t *data, dll_node_t *node)
 	{
 		NEXT_TOKEN()
 		if (node->next == NULL) //L < R
-			return ERR_SEMANTIC_FUNC_PARAMS;
+			return ERR_SEMANTIC_OTHER;
 
 		if (TKN.type == TOKEN_EOL)
 			return ERR_SYNTAX;
@@ -889,7 +912,7 @@ static int list_of_vars(data_t *data)
 			APPLY_NEXT_RULE(assignment)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_REASSIGN)
+		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
 		{
 			APPLY_NEXT_RULE(reassignment)
 			return 0;
@@ -950,7 +973,7 @@ static int func_or_list_of_vars(data_t *data)
 			APPLY_NEXT_RULE(assignment)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_REASSIGN)
+		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
 		{
 			APPLY_NEXT_RULE(reassignment)
 			return 0;
@@ -989,7 +1012,9 @@ static int cycle(data_t *data)
 	else if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
 		data->allow_assign = true;
+		data->allow_reassign = false;
 		APPLY_RULE(list_of_vars)
+		data->allow_reassign = true;
 		GEN(gen_for_start, data->fdata->name.str, curr_idx);
 
 		if (TKN.type == TOKEN_SEMICOLON)
@@ -1045,91 +1070,12 @@ static int end_of_cycle(data_t *data)
 
 static int condition(data_t *data)
 {
-	var_data_t *aux1 = create_aux_var(data);
-	if (aux1 == NULL)
-		return ERR_INTERNAL;
-	data->vdata = aux1;	
-
+	data->vdata = NULL;	//results in expecting type 't'
 	data->allow_func = false;
-	APPLY_RULE_ERR(expression)
-	{
-		free_var_data(aux1);
-		RET()
-	}
-	switch (TKN.type)
-	{
-		case TOKEN_EQUAL: case TOKEN_NOT_EQUAL: 
-		case TOKEN_LESS_OR_EQUAL: case TOKEN_LESS_THAN:
-		case TOKEN_GREATER_OR_EQUAL: case TOKEN_GREATER_THAN:
-			break;
-		default:
-			return ERR_SYNTAX;
-	}
-	token_type rel_op = TKN.type;
-
-	var_data_t *aux2 = create_aux_var(data);
-	if (aux2 == NULL)
-	{
-		free_var_data(aux1);
-		return ERR_INTERNAL;
-	}
-	data->vdata = aux2;
-
-	data->allow_func = false;
-	APPLY_NEXT_RULE_ERR(expression)
-	{
-		free_var_data(aux1);
-		free_var_data(aux2);
-		RET()
-	}
-
-	if (compare_types(aux1->type, aux2->type) == '0')
-		return ERR_SEMANTIC_TYPE_COMPAT;
-
-	free_var_data(aux1);
-	free_var_data(aux2);
-
-	switch (rel_op)
-	{
-		case TOKEN_EQUAL:
-			CODE_INT("EQS\n");
-			break;
-		case TOKEN_NOT_EQUAL:
-			CODE_INT("EQS\nNOTS\n");
-			break;
-		case TOKEN_LESS_THAN:
-			CODE_INT("LTS\n");
-			break;
-		case TOKEN_LESS_OR_EQUAL:
-			CODE_INT("POPS GF@%%tmp0\n"\
-					"POPS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"LTS\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"EQS\n"\
-					"ORS\n");
-			break;
-		case TOKEN_GREATER_THAN:
-			CODE_INT("GTS\n");
-			break;
-		case TOKEN_GREATER_OR_EQUAL:
-			CODE_INT("POPS GF@%%tmp0\n"\
-					"POPS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"GTS\n"\
-					"PUSHS GF@%%tmp1\n"\
-					"PUSHS GF@%%tmp0\n"\
-					"EQS\n"\
-					"ORS\n");
-			break;
-		default:
-			break;
-	}
+	data->allow_relations = true;
+	APPLY_RULE(expression)
+	data->allow_relations = false;
 	GEN(gen_pop, "%%res", "GF");
-
 	return 0;
 }
 

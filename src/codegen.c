@@ -127,10 +127,10 @@ bool gen_get_retval(char *id, char *frame, unsigned long idx)
     return true;
 }
 
-bool gen_func_arg(char *arg_id, unsigned long idx)
+bool gen_func_arg(char *arg_id, unsigned long idx, unsigned long scope_idx)
 {
-    CODE("DEFVAR LF@", arg_id, "\n"); // DEFVAR LF@id
-    CODE("MOVE LF@", arg_id, " LF@%%"); CODE_NUM(idx); CODE("\n"); // MOVE LF@id LF@%idx
+    CODE("DEFVAR LF@", arg_id); CODE("%%"); CODE_NUM(scope_idx); CODE("\n"); // DEFVAR LF@id
+    CODE("MOVE LF@", arg_id); CODE("%%"); CODE_NUM(scope_idx); CODE(" LF@%%"); CODE_NUM(idx); CODE("\n"); // MOVE LF@id LF@%idx
     return true;
 }
 
@@ -183,6 +183,18 @@ bool gen_func_call_arg(unsigned long idx, token *tok)
 {
     CODE("DEFVAR TF@%%"); CODE_NUM(idx); CODE("\n"); // DEFVAR TF@idx
     CODE("MOVE TF@%%"); CODE_NUM(idx); CODE(" "); GEN(gen_token_value, tok); CODE("\n"); // MOVE TF@idx type@value
+    return true;
+}
+
+bool gen_func_call_arg_idx(unsigned long idx, token *tok, unsigned long scope_idx)
+{
+    CODE("DEFVAR TF@%%"); CODE_NUM(idx); CODE("\n"); // DEFVAR TF@idx
+    CODE("MOVE TF@%%"); CODE_NUM(idx); CODE(" "); GEN(gen_token_value, tok); // MOVE TF@idx type@value
+    if (tok->type == TOKEN_IDENTIFIER)
+    {
+        CODE("%%"); CODE_NUM(scope_idx);
+    }
+    CODE("\n");
     return true;
 }
 
@@ -265,8 +277,8 @@ bool gen_builtin_functions()
     CODE("###################################################\n"\
 "LABEL $len\n"\
 "PUSHFRAME\n"\
-"DEFVAR LF@%%retval\n"\
-"STRLEN LF@%%retval LF@%%0\n"\
+"DEFVAR LF@%%retval0\n"\
+"STRLEN LF@%%retval0 LF@%%0\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\
@@ -319,24 +331,26 @@ bool gen_builtin_functions()
 "DEFVAR LF@index\n"\
 "MOVE LF@index int@0\n"\
 "LABEL $print$while\n"\
+"JUMPIFEQ $print$return LF@index LF@%%0\n"\
 "POPS LF@tmp\n"\
 "WRITE LF@tmp\n"\
 "ADD LF@index LF@index int@1\n"\
-"JUMPIFNEQ $print$while LF@index LF@%%0\n"\
+"JUMP $print$while\n"\
+"LABEL $print$return\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\
 "LABEL $int2float\n"\
 "PUSHFRAME\n"\
-"DEFVAR LF@%%retval\n"\
-"INT2FLOAT LF@%%retval LF@%%0\n"\
+"DEFVAR LF@%%retval0\n"\
+"INT2FLOAT LF@%%retval0 LF@%%0\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\
 "LABEL $float2int\n"\
 "PUSHFRAME\n"\
-"DEFVAR LF@%%retval\n"\
-"FLOAT2INT LF@%%retval LF@%%0\n"\
+"DEFVAR LF@%%retval0\n"\
+"FLOAT2INT LF@%%retval0 LF@%%0\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\

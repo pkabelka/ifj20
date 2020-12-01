@@ -44,7 +44,7 @@ typedef struct
 	token prev_token, token;
 
 	func_data_t *fdata; //current function data
-	var_data_t *vdata; //current var data
+	var_data_t *vdata, *vdata2; //current var data
 
 	//for assignment
 	dll_t *assign_list;
@@ -57,9 +57,12 @@ typedef struct
 
 	stack aux; //stack for counting auxiliary variables
 
+	bool used_relations;
 	char current_type;
 	bool allow_assign;
+	bool allow_reassign;
 	bool allow_func;
+	bool allow_relations;
 	bool fix_call;
 	int result;
 	unsigned long arg_idx;
