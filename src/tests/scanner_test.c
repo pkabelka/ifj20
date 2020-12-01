@@ -4,6 +4,43 @@
 #include "str.h"
 #include "scanner.h"
 #include "error.h"
+#include "symtable.h"
+#include "stack.h"
+
+void print_tree(stnode_ptr TempTree, char* sufix, char fromdir)
+{
+    if (TempTree != NULL)
+    {
+        char* suf2 = (char*) malloc(strlen(sufix) + 4);
+        strcpy(suf2, sufix);
+        if (fromdir == 'L')
+        {
+            suf2 = strcat(suf2, "  |");
+            printf("%s\n", suf2);
+        }
+        else
+        {
+            suf2 = strcat(suf2, "   ");
+        }
+        print_tree(TempTree->rnode, suf2, 'R');
+        printf("%s  +-[%s]\n", sufix, TempTree->key);
+        strcpy(suf2, sufix);
+        if (fromdir == 'R')
+        {
+            suf2 = strcat(suf2, "  |");
+        }
+        else
+        {
+            suf2 = strcat(suf2, "   ");
+        }
+        print_tree(TempTree->lnode, suf2, 'L');
+        if (fromdir == 'R')
+        {
+            printf("%s\n", suf2);
+        }
+        free(suf2);
+    }
+}
 
 #define NEXT_TOKEN() \
     result = get_next_token(tok); \
@@ -56,13 +93,54 @@
 
 int main(int argc, char *argv[])
 {
+    int result;
     if (argc <= 1)
     {
-        printf("No argument!\n"); \
-        return 1;
+        string s;
+        str_init(&s);
+        set_token_string_attr(&s);
+        token tok;
+        stnode_ptr tree;
+        symtable_init(&tree);
+        do
+        {
+            bool err;
+            result = get_next_token(&tok);
+            printf("--------------------\n");
+            printf("Result: %d\n", result);
+            printf("Token type: %d\n", tok.type);
+            if (tok.type == TOKEN_INT)
+                printf("Token long: %ld\n", tok.attr.int_val);
+            if (tok.type == TOKEN_FLOAT64)
+                printf("Token float64: %f\n", tok.attr.float64_val);
+            if (tok.type == TOKEN_IDENTIFIER)
+            {
+                printf("Token str: %s\n", tok.attr.str->str);
+                stnode_ptr new = symtable_insert(&tree, tok.attr.str->str, &err);
+                if (new != NULL){
+                    new->data = malloc(sizeof(struct stdata));
+                }
+            }
+            if (tok.type == TOKEN_KEYWORD)
+                printf("Token kw: %d\n", tok.attr.kw);
+        } while (tok.type != TOKEN_EOF);
+        print_tree(tree, "", 'X');
+
+        stnode_ptr del = symtable_search(tree, "main");
+        if (del != NULL)
+        {
+            symtable_delete_node(&tree, "main", free);
+        }
+        symtable_dispose(&tree, free);
+        str_free(&s);
+
+        stack st;
+        stack_init(&st);
+        int *a = malloc(sizeof(int));
+        stack_push(&st, a);
+        stack_dispose(&st, free);
     }
-    int result;
-    if (strcmp("num", argv[1]) == 0)
+    else if (strcmp("num", argv[1]) == 0)
     {
         string s;
         str_init(&s);
@@ -89,9 +167,10 @@ int main(int argc, char *argv[])
 
         NEXT_TOKEN()
         PRINT_VALS()
-        assert(result == SCANNER_SUCCESS);
-        assert(tok->type == TOKEN_INT);
-        assert(tok->attr.int_val == 37L);
+        assert(result == ERR_LEX_STRUCTURE);
+        assert(tok->type == TOKEN_NONE);
+
+        NEXT_TOKEN()
 
         NEXT_TOKEN()
         PRINT_VALS()
