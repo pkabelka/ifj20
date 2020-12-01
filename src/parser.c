@@ -522,7 +522,7 @@ static int func_calling(data_t *data)
 					dll_node_t *tmp = data->arg_list->first;
 					while (tmp != NULL)
 					{
-						GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
+						GEN(gen_func_arg_push, (token*)tmp->data, vd->scope_idx);
 						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
 						{
 							str_free(((token*)tmp->data)->attr.str);
@@ -532,7 +532,7 @@ static int func_calling(data_t *data)
 					token tmp_token;
 					tmp_token.type = TOKEN_INT;
 					tmp_token.attr.int_val = data->arg_list->size;
-					GEN(gen_func_arg_push, &tmp_token, data->scope_idx);
+					GEN(gen_func_arg_push, &tmp_token, vd->scope_idx);
 					dll_dispose(data->arg_list, free);
 					data->arg_list = dll_init();
 				}
