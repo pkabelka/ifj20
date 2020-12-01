@@ -1,5 +1,5 @@
 #include "icgenerator.h"
-#include "str.c"
+#include "str.h"
 
 bool generate_internal_code(dll_t *list) {
     symbol_type previous_type;
