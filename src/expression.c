@@ -32,7 +32,8 @@ typedef enum
 	SYM_VAR, 
 	SYM_INT, 
 	SYM_STRING, 
-	SYM_FLOAT64
+	SYM_FLOAT64,
+	SYM_NONE
 } symbol_type;
 
 typedef struct 
@@ -452,6 +453,8 @@ static int generate_expression(data_t *data, dll_t *list)
 		data->assign_for_swap_output = false;
 	}
 
+	dll_t *prev_sym = dll_init();
+
 	while (tmp != NULL)
 	{
 		switch (((symbol_t*)tmp->data)->sym_type)
@@ -460,17 +463,17 @@ static int generate_expression(data_t *data, dll_t *list)
 				switch (*((o_type*)((symbol_t*)tmp->data)->data))
 				{
 					case S_ADD:
-						switch (data->current_type)
+						if (((symbol_t*)prev_sym->first->data)->sym_type == SYM_STRING &&
+							((symbol_t*)prev_sym->first->next->data)->sym_type == SYM_STRING)
 						{
-							case 's':
-								CODE_INT("POPS GF@%%tmp2\n"\
-										"POPS GF@%%tmp1\n"\
-										"CONCAT GF@%%tmp0 GF@%%tmp1 GF@%%tmp2\n"\
-										"PUSHS GF@%%tmp0\n");
-								break;
-							default:
-								CODE_INT("ADDS\n");
-								break;
+							CODE_INT("POPS GF@%%tmp2\n"\
+									"POPS GF@%%tmp1\n"\
+									"CONCAT GF@%%tmp0 GF@%%tmp1 GF@%%tmp2\n"\
+									"PUSHS GF@%%tmp0\n");
+						}
+						else
+						{
+							CODE_INT("ADDS\n");
 						}
 						break;
 					case S_SUB:
@@ -480,7 +483,15 @@ static int generate_expression(data_t *data, dll_t *list)
 						CODE_INT("MULS\n");
 						break;
 					case S_DIV:
-						CODE_INT("DIVS\n");
+						if (((symbol_t*)prev_sym->first->data)->sym_type == SYM_INT &&
+							((symbol_t*)prev_sym->first->next->data)->sym_type == SYM_INT)
+							{
+								CODE_INT("IDIVS\n");
+							}
+							else
+							{
+								CODE_INT("DIVS\n");
+							}
 						break;
 					case S_EQ:
 						CODE_INT("EQS\n");
@@ -519,6 +530,7 @@ static int generate_expression(data_t *data, dll_t *list)
 					default:
 						break;
 				}
+				dll_delete_last(prev_sym, free);
 				break;
 			case SYM_INT:
 				tmp_tok.type = TOKEN_INT;
@@ -526,6 +538,9 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
+
+				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
+				((symbol_t*)prev_sym->first->data)->sym_type = SYM_INT;
 				break;
 			case SYM_FLOAT64:
 				tmp_tok.type = TOKEN_FLOAT64;
@@ -533,6 +548,9 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
+
+				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
+				((symbol_t*)prev_sym->first->data)->sym_type = SYM_FLOAT64;
 				break;
 			case SYM_STRING:
 				tmp_tok.type = TOKEN_STRING;
@@ -540,6 +558,9 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
+
+				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
+				((symbol_t*)prev_sym->first->data)->sym_type = SYM_STRING;
 				break;
 			case SYM_VAR:
 				tmp_tok.type = TOKEN_IDENTIFIER;
@@ -547,11 +568,28 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok); CODE("%%"); CODE_NUM(((var_data_t*)((symbol_t*)tmp->data)->data)->scope_idx);
 				CODE_INT("\n");
+
+				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
+				switch (((var_data_t*)((symbol_t*)tmp->data)->data)->type)
+				{
+					case 'i':
+						((symbol_t*)prev_sym->first->data)->sym_type = SYM_INT;
+						break;
+					case 'f':
+						((symbol_t*)prev_sym->first->data)->sym_type = SYM_FLOAT64;
+						break;
+					case 's':
+						((symbol_t*)prev_sym->first->data)->sym_type = SYM_STRING;
+						break;
+					default:
+						break;
+				}
 				break;
 			default:
 				break;
 		}
 		tmp = tmp->next;
 	}
+	dll_dispose(prev_sym, free);
 	return 0;
 }
