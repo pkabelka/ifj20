@@ -290,8 +290,11 @@ bool gen_builtin_functions()
 "PUSHFRAME\n"\
 "DEFVAR LF@%%retval0\n"\
 "DEFVAR LF@%%retval1\n"\
-"READ LF@%%retval0 string\n"\
 "MOVE LF@%%retval1 int@0\n"\
+"READ LF@%%retval0 string\n"\
+"JUMPIFNEQ $inputs$noerr LF@%%retval0 nil@nil\n"\
+"MOVE LF@%%retval1 int@1\n"\
+"LABEL $inputs$noerr\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\
