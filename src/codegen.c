@@ -304,6 +304,7 @@ bool gen_builtin_functions()
 "READ LF@%%retval0 int\n"\
 "TYPE LF@typeout LF@%%retval0\n"\
 "JUMPIFEQ $inputi$istrue LF@typeout string@int\n"\
+"MOVE LF@%%retval0 int@1\n"\
 "MOVE LF@%%retval1 int@1\n"\
 "POPFRAME\n"\
 "RETURN\n"\
@@ -320,6 +321,7 @@ bool gen_builtin_functions()
 "READ LF@%%retval0 float\n"\
 "TYPE LF@typeout LF@%%retval0\n"\
 "JUMPIFEQ $inputf$istrue LF@typeout string@float\n"\
+"MOVE LF@%%retval0 float@0x1p+0\n"\
 "MOVE LF@%%retval1 int@1\n"\
 "POPFRAME\n"\
 "RETURN\n"\
