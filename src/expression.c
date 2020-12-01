@@ -24,29 +24,6 @@
 #define EXPECT_TOKEN(token) if (TKN.type != token) return ERR_SYNTAX;
 #define EXPECT_NEXT_TOKEN(token) NEXT_TOKEN() if (TKN.type != token) return ERR_SYNTAX;
 
-typedef enum
-{
-	S_ADD, S_SUB,
-	S_MUL, S_DIV,
-	S_EQ, S_NEQ, S_GT, S_LT, S_GTE, S_LTE
-} o_type;
-
-typedef enum
-{
-	SYM_OPERATOR, // o_type
-	SYM_VAR, 
-	SYM_INT, 
-	SYM_STRING, 
-	SYM_FLOAT64,
-	SYM_NONE
-} symbol_type;
-
-typedef struct 
-{
-	symbol_type sym_type;
-	void *data; //pointer to: var_type or o_type or constant
-} symbol_t;
-
 //precedence table
 const int precedence[3][3] = {
 	//+-  */   r
