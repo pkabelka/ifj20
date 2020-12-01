@@ -453,7 +453,10 @@ static int generate_expression(data_t *data, dll_t *list)
 		data->assign_for_swap_output = false;
 	}
 
-	dll_t *prev_sym = dll_init();
+	symbol_t prev_sym1;
+	symbol_t prev_sym2;
+	prev_sym1.sym_type = SYM_NONE;
+	prev_sym2.sym_type = SYM_NONE;
 
 	while (tmp != NULL)
 	{
@@ -463,8 +466,7 @@ static int generate_expression(data_t *data, dll_t *list)
 				switch (*((o_type*)((symbol_t*)tmp->data)->data))
 				{
 					case S_ADD:
-						if (((symbol_t*)prev_sym->first->data)->sym_type == SYM_STRING &&
-							((symbol_t*)prev_sym->first->next->data)->sym_type == SYM_STRING)
+						if (prev_sym1.sym_type == SYM_STRING && prev_sym2.sym_type == SYM_STRING)
 						{
 							CODE_INT("POPS GF@%%tmp2\n"\
 									"POPS GF@%%tmp1\n"\
@@ -483,27 +485,30 @@ static int generate_expression(data_t *data, dll_t *list)
 						CODE_INT("MULS\n");
 						break;
 					case S_DIV:
-						if (((symbol_t*)prev_sym->first->data)->sym_type == SYM_INT &&
-							((symbol_t*)prev_sym->first->next->data)->sym_type == SYM_INT)
-							{
-								CODE_INT("IDIVS\n");
-							}
-							else
-							{
-								CODE_INT("DIVS\n");
-							}
+						if (prev_sym1.sym_type == SYM_INT && prev_sym2.sym_type == SYM_INT)
+						{
+							CODE_INT("IDIVS\n");
+						}
+						else
+						{
+							CODE_INT("DIVS\n");
+						}
 						break;
 					case S_EQ:
 						CODE_INT("EQS\n");
+						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_NEQ:
 						CODE_INT("EQS\nNOTS\n");
+						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_LT:
 						CODE_INT("LTS\n");
+						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_GT:
 						CODE_INT("GTS\n");
+						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_LTE:
 						CODE_INT("POPS GF@%%tmp0\n"\
@@ -515,6 +520,7 @@ static int generate_expression(data_t *data, dll_t *list)
 								"PUSHS GF@%%tmp0\n"\
 								"EQS\n"\
 								"ORS\n");
+								prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_GTE:
 						CODE_INT("POPS GF@%%tmp0\n"\
@@ -526,11 +532,12 @@ static int generate_expression(data_t *data, dll_t *list)
 								"PUSHS GF@%%tmp0\n"\
 								"EQS\n"\
 								"ORS\n");
+								prev_sym1.sym_type = SYM_NONE;
 						break;
 					default:
 						break;
 				}
-				dll_delete_last(prev_sym, free);
+				prev_sym2.sym_type = SYM_NONE;
 				break;
 			case SYM_INT:
 				tmp_tok.type = TOKEN_INT;
@@ -539,8 +546,8 @@ static int generate_expression(data_t *data, dll_t *list)
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
 
-				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
-				((symbol_t*)prev_sym->first->data)->sym_type = SYM_INT;
+				prev_sym2.sym_type = prev_sym1.sym_type;
+				prev_sym1.sym_type = SYM_INT;
 				break;
 			case SYM_FLOAT64:
 				tmp_tok.type = TOKEN_FLOAT64;
@@ -549,8 +556,8 @@ static int generate_expression(data_t *data, dll_t *list)
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
 
-				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
-				((symbol_t*)prev_sym->first->data)->sym_type = SYM_FLOAT64;
+				prev_sym2.sym_type = prev_sym1.sym_type;
+				prev_sym1.sym_type = SYM_FLOAT64;
 				break;
 			case SYM_STRING:
 				tmp_tok.type = TOKEN_STRING;
@@ -559,8 +566,8 @@ static int generate_expression(data_t *data, dll_t *list)
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
 
-				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
-				((symbol_t*)prev_sym->first->data)->sym_type = SYM_STRING;
+				prev_sym2.sym_type = prev_sym1.sym_type;
+				prev_sym1.sym_type = SYM_STRING;
 				break;
 			case SYM_VAR:
 				tmp_tok.type = TOKEN_IDENTIFIER;
@@ -569,17 +576,17 @@ static int generate_expression(data_t *data, dll_t *list)
 				GEN(gen_token_value, &tmp_tok); CODE("%%"); CODE_NUM(((var_data_t*)((symbol_t*)tmp->data)->data)->scope_idx);
 				CODE_INT("\n");
 
-				dll_insert_first(prev_sym, malloc(sizeof(symbol_t)));
+				prev_sym2.sym_type = prev_sym1.sym_type;
 				switch (((var_data_t*)((symbol_t*)tmp->data)->data)->type)
 				{
 					case 'i':
-						((symbol_t*)prev_sym->first->data)->sym_type = SYM_INT;
+						prev_sym1.sym_type = SYM_INT;
 						break;
 					case 'f':
-						((symbol_t*)prev_sym->first->data)->sym_type = SYM_FLOAT64;
+						prev_sym1.sym_type = SYM_FLOAT64;
 						break;
 					case 's':
-						((symbol_t*)prev_sym->first->data)->sym_type = SYM_STRING;
+						prev_sym1.sym_type = SYM_STRING;
 						break;
 					default:
 						break;
@@ -590,6 +597,5 @@ static int generate_expression(data_t *data, dll_t *list)
 		}
 		tmp = tmp->next;
 	}
-	dll_dispose(prev_sym, free);
 	return 0;
 }
