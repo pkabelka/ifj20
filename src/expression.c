@@ -466,12 +466,32 @@ static int generate_expression(data_t *data, dll_t *list)
 						{
 							if (*((long*)((symbol_t*)tmp->prev->data)->data) == 0L)
 								return ERR_ZERO_DIVISION;
+
+							// Detect int zero division at runtime
+							CODE_INT("POPS GF@%%tmp0\n"\
+									"JUMPIFNEQ $", data->fdata->name.str, "$"); CODE_NUM(data->label_idx+1);
+							CODE_INT("$diverr GF@%%tmp0 int@0\n"\
+									"EXIT int@9\n"\
+									"LABEL $", data->fdata->name.str, "$");
+							CODE_NUM(++data->label_idx); CODE_INT("$diverr\n"\
+									"PUSHS GF@%%tmp0\n");
+
 							CODE_INT("IDIVS\n");
 						}
 						else
 						{
 							if (*((double*)((symbol_t*)tmp->prev->data)->data) == 0.0)
 								return ERR_ZERO_DIVISION;
+
+							// Detect float zero division at runtime
+							CODE_INT("POPS GF@%%tmp0\n"\
+									"JUMPIFNEQ $", data->fdata->name.str, "$"); CODE_NUM(data->label_idx+1);
+							CODE_INT("$diverr GF@%%tmp0 float@0x0p+0\n"\
+									"EXIT int@9\n"\
+									"LABEL $", data->fdata->name.str, "$");
+							CODE_NUM(++data->label_idx); CODE_INT("$diverr\n"\
+									"PUSHS GF@%%tmp0\n");
+
 							CODE_INT("DIVS\n");
 						}
 						break;
