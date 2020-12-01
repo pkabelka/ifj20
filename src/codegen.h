@@ -1,7 +1,10 @@
 /**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
  * @brief Code generator interface
  *
- * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
 
 #ifndef _CODEGEN_H

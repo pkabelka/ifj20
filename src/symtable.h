@@ -1,8 +1,11 @@
 /**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
  * @brief Binary tree symbol table implementation
  *
- * @author Kryštof Glos <xglosk01@stud.fit.vutbr.cz>
- * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
+ * @author Kryštof Glos <xglosk01 at stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
 
 #ifndef _SYMTABLE_H

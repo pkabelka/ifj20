@@ -1,5 +1,15 @@
+/**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
+ * @brief Double linked list interface
+ * 
+ * @author Daniel Moudrý <xmoudr01 at stud.fit.vutbr.cz>
+ */
+
 #ifndef _DLL_H
 #define _DLL_H
+
 #include <stdlib.h>
 #include <stdbool.h>
 typedef struct dll_node_t {
@@ -29,4 +39,5 @@ bool dll_delete_last(dll_t*, void (*delete_ptr)(void*));
 
 bool dll_clear(dll_t*, void (*delete_ptr)(void*));
 bool dll_dispose(dll_t*, void (*delete_ptr)(void*));
+
 #endif

@@ -1,6 +1,11 @@
 /**
- * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
  * @brief Implementation of parsing expressions
+ * 
+ * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
 
 #include "expression.h"

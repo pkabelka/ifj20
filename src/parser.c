@@ -1,7 +1,11 @@
 /**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
  * @brief Parser implementation
+ * 
  * @author Michael Škrášek <xskras01 at stud.fit.vutbr.cz>
- * @author Petr Kabelka <xkabel09@stud.fit.vutbr.cz>
+ * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
 
 #include "parser.h"

@@ -1,3 +1,12 @@
+/**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
+ * @brief Double linked list implementation
+ * 
+ * @author Daniel Moudrý <xmoudr01 at stud.fit.vutbr.cz>
+ */
+
 #include "dll.h"
 
 dll_t* dll_init() {
