@@ -458,11 +458,6 @@ static int generate_expression(data_t *data, dll_t *list)
 		data->assign_for_swap_output = false;
 	}
 
-	symbol_t prev_sym1;
-	symbol_t prev_sym2;
-	prev_sym1.sym_type = SYM_NONE;
-	prev_sym2.sym_type = SYM_NONE;
-
 	while (tmp != NULL)
 	{
 		switch (((symbol_t*)tmp->data)->sym_type)
@@ -471,7 +466,7 @@ static int generate_expression(data_t *data, dll_t *list)
 				switch (*((o_type*)((symbol_t*)tmp->data)->data))
 				{
 					case S_ADD:
-						if (prev_sym1.sym_type == SYM_STRING && prev_sym2.sym_type == SYM_STRING)
+						if (data->current_type == 's')
 						{
 							CODE_INT("POPS GF@%%tmp2\n"\
 									"POPS GF@%%tmp1\n"\
@@ -490,30 +485,30 @@ static int generate_expression(data_t *data, dll_t *list)
 						CODE_INT("MULS\n");
 						break;
 					case S_DIV:
-						if (prev_sym1.sym_type == SYM_INT && prev_sym2.sym_type == SYM_INT)
+						if (data->current_type == 'i')
 						{
+							if (*((long*)((symbol_t*)tmp->prev->data)->data) == 0L)
+								return ERR_ZERO_DIVISION;
 							CODE_INT("IDIVS\n");
 						}
 						else
 						{
+							if (*((double*)((symbol_t*)tmp->prev->data)->data) == 0.0)
+								return ERR_ZERO_DIVISION;
 							CODE_INT("DIVS\n");
 						}
 						break;
 					case S_EQ:
 						CODE_INT("EQS\n");
-						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_NEQ:
 						CODE_INT("EQS\nNOTS\n");
-						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_LT:
 						CODE_INT("LTS\n");
-						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_GT:
 						CODE_INT("GTS\n");
-						prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_LTE:
 						CODE_INT("POPS GF@%%tmp0\n"\
@@ -525,7 +520,6 @@ static int generate_expression(data_t *data, dll_t *list)
 								"PUSHS GF@%%tmp0\n"\
 								"EQS\n"\
 								"ORS\n");
-								prev_sym1.sym_type = SYM_NONE;
 						break;
 					case S_GTE:
 						CODE_INT("POPS GF@%%tmp0\n"\
@@ -537,12 +531,10 @@ static int generate_expression(data_t *data, dll_t *list)
 								"PUSHS GF@%%tmp0\n"\
 								"EQS\n"\
 								"ORS\n");
-								prev_sym1.sym_type = SYM_NONE;
 						break;
 					default:
 						break;
 				}
-				prev_sym2.sym_type = SYM_NONE;
 				break;
 			case SYM_INT:
 				tmp_tok.type = TOKEN_INT;
@@ -550,9 +542,6 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
-
-				prev_sym2.sym_type = prev_sym1.sym_type;
-				prev_sym1.sym_type = SYM_INT;
 				break;
 			case SYM_FLOAT64:
 				tmp_tok.type = TOKEN_FLOAT64;
@@ -560,9 +549,6 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
-
-				prev_sym2.sym_type = prev_sym1.sym_type;
-				prev_sym1.sym_type = SYM_FLOAT64;
 				break;
 			case SYM_STRING:
 				tmp_tok.type = TOKEN_STRING;
@@ -570,9 +556,6 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok);
 				CODE_INT("\n");
-
-				prev_sym2.sym_type = prev_sym1.sym_type;
-				prev_sym1.sym_type = SYM_STRING;
 				break;
 			case SYM_VAR:
 				tmp_tok.type = TOKEN_IDENTIFIER;
@@ -580,22 +563,6 @@ static int generate_expression(data_t *data, dll_t *list)
 				CODE_INT("PUSHS ");
 				GEN(gen_token_value, &tmp_tok); CODE("%%"); CODE_NUM(((var_data_t*)((symbol_t*)tmp->data)->data)->scope_idx);
 				CODE_INT("\n");
-
-				prev_sym2.sym_type = prev_sym1.sym_type;
-				switch (((var_data_t*)((symbol_t*)tmp->data)->data)->type)
-				{
-					case 'i':
-						prev_sym1.sym_type = SYM_INT;
-						break;
-					case 'f':
-						prev_sym1.sym_type = SYM_FLOAT64;
-						break;
-					case 's':
-						prev_sym1.sym_type = SYM_STRING;
-						break;
-					default:
-						break;
-				}
 				break;
 			default:
 				break;
