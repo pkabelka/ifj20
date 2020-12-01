@@ -331,10 +331,12 @@ bool gen_builtin_functions()
 "DEFVAR LF@index\n"\
 "MOVE LF@index int@0\n"\
 "LABEL $print$while\n"\
+"JUMPIFEQ $print$return LF@index LF@%%0\n"\
 "POPS LF@tmp\n"\
 "WRITE LF@tmp\n"\
 "ADD LF@index LF@index int@1\n"\
-"JUMPIFNEQ $print$while LF@index LF@%%0\n"\
+"JUMP $print$while\n"\
+"LABEL $print$return\n"\
 "POPFRAME\n"\
 "RETURN\n"\
 "###################################################\n"\

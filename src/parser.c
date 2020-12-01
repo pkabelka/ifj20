@@ -616,6 +616,13 @@ static int func_calling(data_t *data)
 	}
 	else if (TKN.type == TOKEN_PAR_CLOSE && data->prev_token.type != TOKEN_COMMA)
 	{
+		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		{
+			token tmp_token;
+			tmp_token.type = TOKEN_INT;
+			tmp_token.attr.int_val = 0;
+			GEN(gen_func_arg_push, &tmp_token, data->scope_idx);
+		}
 		NEXT_TOKEN()
 		return 0;
 	}
