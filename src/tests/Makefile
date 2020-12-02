@@ -14,4 +14,4 @@ run: all
 
 scanner_test:
 	cp -f -t . ../scanner.h ../scanner.c ../str.h ../str.c ../error.h ../stack.c ../stack.h ../symtable.h ../symtable.c
-	$(CC) $(CFLAGS) icgenerator_test.c scanner_test.c scanner.h scanner.c str.h str.c error.h stack.c stack.h symtable.h symtable.c -o scanner_test $(LDFLAGS)
+	$(CC) $(CFLAGS) optimizer_test.c scanner_test.c scanner.h scanner.c str.h str.c error.h stack.c stack.h symtable.h symtable.c -o scanner_test $(LDFLAGS)
