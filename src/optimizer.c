@@ -2,11 +2,26 @@
 #include "error.h"
 #include "dll.h"
 
-int optimize(dll_t *list, symbol_type type) {
+int optimize(dll_t *list, data_t *data) {
     dll_node_t *operand_one;
     dll_node_t *operand_two;
     symbol_t *symbol;
     o_type operator;
+
+    symbol_type type;
+    switch (data->current_type) {
+        case 'i':
+            type = SYM_INT;
+            break;
+        
+        case 'f':
+            type = SYM_FLOAT64;
+            break;
+
+        case 's':
+            type = SYM_STRING;
+            break;
+    }
 
 
     dll_node_t *node = list->first;
@@ -42,6 +57,7 @@ int optimize(dll_t *list, symbol_type type) {
                                 break;
                         }
                         ((symbol_t*)operand_one->data)->sym_type = SYM_INT;
+                        free(((symbol_t*)operand_one->data)->data);
                         ((symbol_t*)operand_one->data)->data = long_var_data;
                     }
                     else if (type == SYM_FLOAT64) {
@@ -66,6 +82,7 @@ int optimize(dll_t *list, symbol_type type) {
                                 break;
                         }
                         ((symbol_t*)operand_one->data)->sym_type = SYM_FLOAT64;
+                        free(((symbol_t*)operand_one->data)->data);
                         ((symbol_t*)operand_one->data)->data = float_var_data;
                     }
 
@@ -87,6 +104,7 @@ int optimize(dll_t *list, symbol_type type) {
                         str_add_const(string_var_data, ((string*)((symbol_t*)operand_one->data)->data)->str);
                         str_add_const(string_var_data, ((string*)((symbol_t*)operand_two->data)->data)->str);
                         ((symbol_t*)operand_one->data)->sym_type = SYM_STRING;
+                        free(((symbol_t*)operand_one->data)->data);
                         ((symbol_t*)operand_one->data)->data = string_var_data;
 
                         //free nodes
@@ -111,6 +129,7 @@ int optimize(dll_t *list, symbol_type type) {
 
                                 *long_var_data = 0;
                                 ((symbol_t*)operand_one->data)->sym_type = SYM_INT;
+                                free(((symbol_t*)operand_one->data)->data);
                                 ((symbol_t*)operand_one->data)->data = long_var_data;
 
                                 //free nodes
@@ -132,6 +151,7 @@ int optimize(dll_t *list, symbol_type type) {
 
                                 *float_var_data = 0;
                                 ((symbol_t*)operand_one->data)->sym_type = SYM_FLOAT64;
+                                free(((symbol_t*)operand_one->data)->data);
                                 ((symbol_t*)operand_one->data)->data = float_var_data;
 
                                 //free nodes
@@ -155,6 +175,7 @@ int optimize(dll_t *list, symbol_type type) {
 
                                 *long_var_data = 0;
                                 ((symbol_t*)operand_two->data)->sym_type = SYM_INT;
+                                free(((symbol_t*)operand_one->data)->data);
                                 ((symbol_t*)operand_two->data)->data = long_var_data;
 
                                 //free nodes
@@ -185,6 +206,7 @@ int optimize(dll_t *list, symbol_type type) {
 
                                 *float_var_data = 0;
                                 ((symbol_t*)operand_two->data)->sym_type = SYM_FLOAT64;
+                                free(((symbol_t*)operand_one->data)->data);
                                 ((symbol_t*)operand_two->data)->data = float_var_data;
 
                                 //free nodes
