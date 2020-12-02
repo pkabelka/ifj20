@@ -3,6 +3,6 @@
 
 #include "expression.h"
 
-int optimize(dll_t*, symbol_type);
+int optimize(dll_t*, data_t*);
 
 #endif
