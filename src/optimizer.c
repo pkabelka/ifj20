@@ -160,12 +160,15 @@ int optimize(dll_t *list, data_t *data) {
 
                                 *float_var_data = 0;
                                 ((symbol_t*)operand_one->data)->sym_type = SYM_FLOAT64;
+                                str_free((string*)(((symbol_t*)operand_one->data)->data));
                                 free(((symbol_t*)operand_one->data)->data);
                                 ((symbol_t*)operand_one->data)->data = float_var_data;
 
                                 //free nodes
                                 operand_one->next = node->next;
                                 if(node->next != NULL) node->next->prev = operand_one;
+                                str_free((string*)(((symbol_t*)operand_two->data)->data));
+                                str_free((string*)(((symbol_t*)node->data)->data));
                                 free_symbol(((symbol_t*)operand_two->data));
                                 free_symbol(((symbol_t*)node->data));
                                 free(operand_two);
