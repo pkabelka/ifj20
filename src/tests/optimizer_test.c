@@ -1,11 +1,11 @@
 #include <stdio.h>
-#include "optimizer.h"
-#include "dll.h"
-#include "expression.h"
-#include <stdlib.h>
-#include "dll.c"
-#include "optimizer.c"
-#include "str.c"
+#include "../optimizer.h"
+#include "../dll.h"
+#include "../expression.h"
+//#include <stdlib.h>
+//#include "src/dll.c"
+//#include "src/optimizer.c"
+//#include "src/str.c"
 
 int main() {
     dll_t *list = dll_init();
@@ -30,6 +30,9 @@ int main() {
     dll_insert_first(list, symbol3);
     dll_insert_first(list, symbol2);
     dll_insert_first(list, symbol1);
+
+    data_t *data = malloc(sizeof(data_t));
+    data->current_type = 'i';
 
     dll_node_t *tmp = list->first;
     printf("\n");
@@ -80,7 +83,7 @@ int main() {
         tmp = tmp->next;
     }
 
-    if(optimize(list, SYM_INT) != 0) return 1;
+    if(optimize(list, data) != 0) return 1;
 
     tmp = list->first;
     printf("\n\n");
