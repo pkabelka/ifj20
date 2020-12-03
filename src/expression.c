@@ -33,15 +33,16 @@
 // 0 = shouldnt happen
 //-1 = shift right <
 //10 = equal
+//11 = stop parsing
 const int precedence[7][7] = {
 	//+-  */   (   )   r  id   $
 	{  1,  1, -1,  1, -1,  1, -1 }, // +-
 	{ -1,  1, -1,  1, -1,  1, -1 }, // */
 	{ -1, -1, -1,  0, -1,  0, -1 }, // (
-	{  1,  1, 10,  1,  1,  1, -1 }, // )
+	{  1,  1, 10,  1,  1,  1,  0 }, // )
 	{  1,  1, -1,  1,  0,  1, -1 }, // r - relational operators
 	{ -1, -1, -1,  0, -1,  0, -1 }, // id - var or constant
-	{  1,  1,  1,  1,  1,  1,  0 }  // $
+	{  1,  1,  0,  1,  1,  1, 11 }  // $
 };
 
 static int end_of_expression(data_t *data, dll_t *list, stack *sym_stack);
@@ -116,7 +117,7 @@ int expression(data_t *data)
 		}
 	}
 
-	stack_dispose(&sym_stack, free);
+	stack_dispose(&sym_stack, free_symbol);
 	dll_dispose(list, free_symbol);
 	return r;
 }
@@ -291,14 +292,18 @@ static int push_symbol(dll_t *list, stack *sym_stack, symbol_t *sym)
 		}
 		else if (prec == -1) //shift
 			break;
-
-		stack_pop(sym_stack, stack_nofree);
-
-		if (sym2->sym_type == SYM_STOP && sym->sym_type == SYM_STOP) //$
+		else if (prec == 11) //$$
 		{
-			free_symbol(sym2);
+			free_symbol(sym);
 			return 0;
 		}
+		else //missing ( or )
+		{
+			free_symbol(sym);
+			return ERR_SYNTAX;
+		}
+
+		stack_pop(sym_stack, stack_nofree);
 	}
 
 	if (!stack_push(sym_stack, sym))
