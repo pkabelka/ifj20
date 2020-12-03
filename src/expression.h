@@ -14,19 +14,22 @@
 
 typedef enum
 {
-	S_ADD, S_SUB,
-	S_MUL, S_DIV,
-	S_EQ, S_NEQ, S_GT, S_LT, S_GTE, S_LTE
+	S_ADD = 0, S_SUB = 1,
+	S_MUL = 2, S_DIV = 3,
+	S_EQ = 4, S_NEQ = 5, S_GT = 6, S_LT = 7, S_GTE = 8, S_LTE = 9
 } o_type;
 
 typedef enum
 {
-	SYM_OPERATOR, // o_type
-	SYM_VAR, 
-	SYM_INT, 
-	SYM_STRING, 
-	SYM_FLOAT64,
-	SYM_NONE
+	SYM_OPERATOR = 0, // o_type
+	SYM_VAR = 1,
+	SYM_INT = 2,
+	SYM_STRING = 3,
+	SYM_FLOAT64 = 4,
+	// only for f*cking operator precedence parsing
+	SYM_STOP = 5, //$
+	SYM_OPEN = 6, //(
+	SYM_CLOSE = 7 //)
 } symbol_type;
 
 typedef struct 
