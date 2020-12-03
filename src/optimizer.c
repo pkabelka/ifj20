@@ -116,6 +116,9 @@ int optimize(dll_t *list, data_t *data) {
                         free(node);
                         node = operand_one->next;
                     }
+                    else {
+                        node = node->next;
+                    }
                 }
             }
             // optimize multiplying variable by 0
@@ -141,6 +144,12 @@ int optimize(dll_t *list, data_t *data) {
                                 free(node);
                                 node = operand_one->next;
                             }
+                            else {
+                                node = node->next;
+                            }
+                        }
+                        else {
+                            node = node->next;
                         }
                     }
                     else if (type == SYM_FLOAT64) {
@@ -163,7 +172,16 @@ int optimize(dll_t *list, data_t *data) {
                                 free(node);
                                 node = operand_one->next;
                             }
+                            else {
+                                node = node->next;
+                            }
                         }
+                        else {
+                            node = node->next;
+                        }
+                    }
+                    else {
+                        node = node->next;
                     }
                 }
                 else if (((symbol_t*)operand_two->data)->sym_type == type && ((symbol_t*)operand_one->data)->sym_type == SYM_VAR) {
