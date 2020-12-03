@@ -104,7 +104,7 @@ int optimize(dll_t *list, data_t *data) {
                         str_add_const(string_var_data, ((string*)((symbol_t*)operand_one->data)->data)->str);
                         str_add_const(string_var_data, ((string*)((symbol_t*)operand_two->data)->data)->str);
                         ((symbol_t*)operand_one->data)->sym_type = SYM_STRING;
-                        free(((symbol_t*)operand_one->data)->data);
+                        free((string*)(((symbol_t*)operand_one->data)->data));
                         ((symbol_t*)operand_one->data)->data = string_var_data;
 
                         //free nodes
