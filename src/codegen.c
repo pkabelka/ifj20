@@ -371,7 +371,7 @@ bool gen_builtin_functions()
 "MOVE LF@index int@1\n"\
 "DEFVAR LF@tmp\n"\
 "DEFVAR LF@%%retval0\n"\
-"MOVE LF@%%retval0 string@\\000\n"\
+"MOVE LF@%%retval0 string@\n"\
 "\n"\
 "STRLEN LF@tmp LF@%%0\n"\
 "LT LF@%%retval1 LF@%%1 int@0\n"\

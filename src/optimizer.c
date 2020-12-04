@@ -111,8 +111,6 @@ int optimize(dll_t *list, data_t *data) {
                         //free nodes
                         operand_one->next = node->next;
                         if(node->next != NULL) node->next->prev = operand_one;
-                        str_free((string*)(((symbol_t*)operand_two->data)->data));
-                        str_free((string*)(((symbol_t*)node->data)->data));
                         free_symbol(((symbol_t*)operand_two->data));
                         free_symbol(((symbol_t*)node->data));
                         free(operand_two);
