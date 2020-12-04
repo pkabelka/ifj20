@@ -167,6 +167,10 @@ static int start_of_expression(data_t *data, dll_t *list, stack *sym_stack)
 		EXPECT_NEXT_TOKEN(TOKEN_PAR_OPEN)
 		return 0;
 	}
+	else if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
+	{
+		return ERR_SEMANTIC_UNDEF_REDEF;
+	}
 
 	return ERR_SYNTAX;
 }

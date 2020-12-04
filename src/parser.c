@@ -487,7 +487,7 @@ static int func_calling(data_t *data)
 	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
 		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
-			return ERR_SEMANTIC_OTHER;
+			return ERR_SEMANTIC_UNDEF_REDEF;
 		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
 		{
 			token *tmp_token = malloc(sizeof(token));
