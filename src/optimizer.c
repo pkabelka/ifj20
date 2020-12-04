@@ -200,7 +200,7 @@ int optimize(dll_t *list, data_t *data) {
                                 ((symbol_t*)operand_two->data)->data = long_var_data;
 
                                 //free nodes
-                                operand_two->next = node->next;
+                                operand_one->next = node->next;
                                 if(node->next != NULL) node->next->prev = operand_two;
                                 free_symbol(((symbol_t*)operand_two->data));
                                 free_symbol(((symbol_t*)node->data));
@@ -231,7 +231,7 @@ int optimize(dll_t *list, data_t *data) {
                                 ((symbol_t*)operand_two->data)->data = float_var_data;
 
                                 //free nodes
-                                operand_two->next = node->next;
+                                operand_one->next = node->next;
                                 if(node->next != NULL) node->next->prev = operand_two;
                                 free_symbol(((symbol_t*)operand_two->data));
                                 free_symbol(((symbol_t*)node->data));
