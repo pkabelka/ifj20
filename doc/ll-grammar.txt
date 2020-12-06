@@ -1,7 +1,7 @@
-%token prolog EOF EOL semi comma assign reassign func identifier int float64 string int_val float64_val string_val if else for return curly_open curly_close par_open par_close comma underscore chr ord len substr float2int int2float print inputf intputi inputs
+%token prolog EOF EOL semi comma assign reassign func identifier expr int float64 string int_val float64_val string_val if else for return curly_open curly_close par_open par_close comma underscore chr ord len substr float2int int2float print inputf intputi inputs
 %%
-parse                    : prolog EOL func_def EOF ;
-func_def                 : func_header curly_open EOL _scope_ EOL func_def
+parse                    : prolog EOL function EOF ;
+function                 : func_header curly_open EOL command EOL function
                          | ;
 func_header              : func identifier par_open func_args par_close func_return_vals ;
 func_args                : identifier var_type comma func_args
@@ -14,12 +14,12 @@ func_return_vals_par     : comma var_type func_return_vals_par
 var_type                 : int
                          | float64
                          | string ;
-_scope_                    : identifier func_or_list_of_vars
+command                  : identifier func_or_list_of_vars
                          | is_inter_func par_open call_func
                          | if statement
                          | for cycle
                          | return returned_vals ;
-statement                : condition curly_open EOL _scope_ else curly_open EOL _scope_ EOL ;
+statement                : condition curly_open EOL command else curly_open EOL command EOL ;
 func_or_list_of_vars     : comma list_of_vars
                          | par_open call_func
                          | assign assignment
@@ -49,7 +49,7 @@ is_inter_func            : len
                          | inputf
                          | intputi
                          | inputs ;
-expression               : int ;
+expression               : expr ;
 assignment               : end_of_assignment ;
 reassignment             : end_of_assignment ;
 end_of_assignment        : expression ;
