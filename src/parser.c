@@ -52,6 +52,8 @@ static int close_scope(data_t *data);
 static int end_of_assignment(data_t *data, dll_node_t *node);
 static int check_ret_vals(data_t *data, char type, unsigned int n);
 static int check_func_calls(data_t *data);
+static int command(data_t *data);
+static int function(data_t *data);
 
 static char kw_to_char(keyword kw);
 static bool add_inter_func_to_table(data_t *data);
@@ -59,7 +61,7 @@ static char tkn_to_char(token token);
 static bool add_to_assign_list(data_t *data, token token);
 static void set_return_types(data_t *data, dll_node_t *node);
 static bool compare_list_of_types(string expected, string sent);
-static var_data_t* create_aux_var(data_t *data);
+static var_data_t* create_aux_var();
 
 bool init_func_data(void **ptr);
 func_call_data_t* create_func_call_data();
@@ -85,7 +87,6 @@ bool init_data(data_t *data)
 	stack_init(&data->var_table);
 	stack_init(&data->defvar_table);
 	stack_init(&data->calls);
-	stack_init(&data->aux);
 	symtable_init(&data->func_table);
 
 	data->assign_list = dll_init();
@@ -96,7 +97,6 @@ bool init_data(data_t *data)
 		stack_dispose(&data->calls, free_func_call_data);
 		stack_dispose(&data->var_table, free_local_scope);
 		stack_dispose(&data->defvar_table, free_local_scope);
-		stack_dispose(&data->aux, free);
 		return false;
 	}
 
@@ -115,7 +115,6 @@ void dispose_data(data_t *data)
 	stack_dispose(&data->calls, free_func_call_data);
 	stack_dispose(&data->var_table, free_local_scope);
 	stack_dispose(&data->defvar_table, free_local_scope);
-	stack_dispose(&data->aux, free);
 	stack_dispose(&data->for_assign, free);
 	dll_dispose(data->assign_list, stack_nofree);
 	dll_dispose(data->arg_list, stack_nofree);
@@ -232,34 +231,7 @@ int parse(data_t *data)
 		return ERR_SYNTAX;
 	
 	//parsing all functions
-	while (TKN.type != TOKEN_EOF)
-	{
-		NEXT_TOKEN()
-		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_FUNC)
-		{
-			APPLY_RULE(new_scope)
-			APPLY_NEXT_RULE(func_header)
-			APPLY_NEXT_RULE(_scope_);
-			APPLY_RULE(close_scope)
-
-			GEN(gen_func_end, data->fdata->name.str);
-			str_swap(&ifjcode20_output, &func_body);
-			GEN(str_add_str, &ifjcode20_output, &func_declarations); // append function declarations
-			GEN(str_add_str, &ifjcode20_output, &func_body); // append function body
-			str_clear(&func_declarations);
-			str_clear(&func_body);
-			data->arg_idx = 0;
-			data->label_idx = 0;
-			data->scope_idx = 0;
-			stack_dispose(&data->var_table, free_local_scope); // dispose all scopes at the end of a function
-			stack_dispose(&data->defvar_table, free_local_scope); // dispose all scopes at the end of a function
-
-			if (!data->fdata->used_return)
-				return ERR_SEMANTIC_FUNC_PARAMS;
-		}
-		else if (TKN.type != TOKEN_EOL && TKN.type != TOKEN_EOF)
-			return ERR_SYNTAX;
-	}
+	APPLY_NEXT_RULE(function)
 
 	//checking definition of main
 	stnode_ptr node = symtable_search(data->func_table, "main");
@@ -637,53 +609,7 @@ static int _scope_(data_t *data)
 	if (data->prev_token.type == TOKEN_CURLY_OPEN && TKN.type == TOKEN_CURLY_CLOSE)
 		return false;
 
-	while (true)
-	{
-		if (TKN.type == TOKEN_EOL)
-		{
-			NEXT_TOKEN()
-			continue;
-		}
-		if (TKN.type == TOKEN_CURLY_CLOSE)
-			break;
-		else if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
-		{
-			APPLY_NEXT_RULE(func_or_list_of_vars)
-			EXPECT_TOKEN(TOKEN_EOL)
-		}
-		else if (TKN.type == TOKEN_KEYWORD)
-		{
-			if (is_inter_func(TKN)) //calling inter functions
-			{
-				NEXT_TOKEN()
-				if (TKN.type == TOKEN_PAR_OPEN)
-				{
-					APPLY_RULE(call_func)
-					EXPECT_TOKEN(TOKEN_EOL)
-				}
-				else
-					return ERR_SYNTAX;
-			}
-			else if (TKN.attr.kw == KW_IF)
-			{
-				APPLY_NEXT_RULE(statement)
-			}
-			else if (TKN.attr.kw == KW_FOR)
-			{
-				APPLY_NEXT_RULE(cycle)
-			}
-			else if (TKN.attr.kw == KW_RETURN)
-			{
-				data->fdata->used_return = true;
-				APPLY_NEXT_RULE(returned_vals)
-			}
-			else
-				return ERR_SYNTAX;
-		}
-		else
-			return ERR_SYNTAX;
-	}
-	return 0;
+	return command(data);
 }
 
 static int scope(data_t *data)
@@ -1091,7 +1017,7 @@ static int returned_vals(data_t *data)
 		return 0;
 	}
 
-	var_data_t *aux1 = create_aux_var(data);
+	var_data_t *aux1 = create_aux_var();
 	if (aux1 == NULL)
 		return ERR_INTERNAL;
 	data->vdata = aux1;
@@ -1135,7 +1061,7 @@ static int returned_vals(data_t *data)
 
 static int next_returned_val(data_t *data, unsigned int n)
 {
-	var_data_t *auxn = create_aux_var(data);
+	var_data_t *auxn = create_aux_var();
 	if (auxn == NULL)
 		return ERR_INTERNAL;
 	data->vdata = auxn;	
@@ -1230,14 +1156,12 @@ static int new_scope(data_t *data)
 		return ERR_INTERNAL;
 	*zero = 0;
 
-	stack_push(&data->aux, zero);
 	data->scope_idx++;
 	return 0;
 }
 
 static int close_scope(data_t *data)
 {
-	stack_pop(&data->aux, free);
 	stack_pop(&data->var_table, free_local_scope);
 	data->scope_idx--;
 	return 0;
@@ -1509,7 +1433,7 @@ static void set_return_types(data_t *data, dll_node_t *node)
 	}
 }
 
-static var_data_t* create_aux_var(data_t *data)
+static var_data_t* create_aux_var()
 {
 	var_data_t *vd = malloc(sizeof(var_data_t));
 	if (vd == NULL)
@@ -1522,25 +1446,6 @@ static var_data_t* create_aux_var(data_t *data)
 		return NULL;
 	}
 
-	int n = *(int*)data->aux.top->data;
-	int len = (7 + ((n - n % 2) / 10));
-	char *name = malloc(sizeof(char) * len);
-	if (name == NULL)
-	{
-		free_var_data(vd);
-		return NULL;
-	}
-
-	sprintf(name, "@aux_%d", n);
-	if (!str_add_const(&vd->name, name))
-	{
-		free_var_data(vd);
-		free(name);
-		return NULL;
-	}
-
-	free(name);
-	*(int*)data->aux.top->data += 1;
 	return vd;
 }
 
@@ -1583,4 +1488,94 @@ static bool compare_list_of_types(string expected, string sent)
 	}
 
 	return true;
+}
+
+static int function(data_t *data)
+{
+	//get rid of EOLs
+	while (TKN.type == TOKEN_EOL)
+	{
+		NEXT_TOKEN()
+	}
+
+	if (TKN.type == TOKEN_EOF)
+		return 0;
+	else if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_FUNC)
+	{
+		APPLY_RULE(new_scope)
+		APPLY_NEXT_RULE(func_header)
+		APPLY_NEXT_RULE(_scope_);
+		APPLY_RULE(close_scope)
+
+		GEN(gen_func_end, data->fdata->name.str);
+		str_swap(&ifjcode20_output, &func_body);
+		GEN(str_add_str, &ifjcode20_output, &func_declarations); // append function declarations
+		GEN(str_add_str, &ifjcode20_output, &func_body); // append function body
+		str_clear(&func_declarations);
+		str_clear(&func_body);
+		data->arg_idx = 0;
+		data->label_idx = 0;
+		data->scope_idx = 0;
+		stack_dispose(&data->var_table, free_local_scope); // dispose all scopes at the end of a function
+		stack_dispose(&data->defvar_table, free_local_scope); // dispose all scopes at the end of a function
+
+		if (!data->fdata->used_return)
+			return ERR_SEMANTIC_FUNC_PARAMS;
+	}
+	else
+		return ERR_SYNTAX;
+
+	NEXT_TOKEN()
+	return function(data);
+}
+
+static int command(data_t *data)
+{
+	//get rid of EOLs
+	while (TKN.type == TOKEN_EOL)
+	{
+		NEXT_TOKEN()
+	}
+
+	if (TKN.type == TOKEN_CURLY_CLOSE)
+		return 0;
+	else if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+	{
+		APPLY_NEXT_RULE(func_or_list_of_vars)
+		EXPECT_TOKEN(TOKEN_EOL)
+	}
+	else if (TKN.type == TOKEN_KEYWORD)
+	{
+		if (is_inter_func(TKN)) //calling inter functions
+		{
+			NEXT_TOKEN()
+			if (TKN.type == TOKEN_PAR_OPEN)
+			{
+				APPLY_RULE(call_func)
+				EXPECT_TOKEN(TOKEN_EOL)
+			}
+			else
+				return ERR_SYNTAX;
+		}
+		else if (TKN.attr.kw == KW_IF)
+		{
+			APPLY_NEXT_RULE(statement)
+		}
+		else if (TKN.attr.kw == KW_FOR)
+		{
+			APPLY_NEXT_RULE(cycle)
+		}
+		else if (TKN.attr.kw == KW_RETURN)
+		{
+			data->fdata->used_return = true;
+			APPLY_NEXT_RULE(returned_vals)
+		}
+		else
+			return ERR_SYNTAX;
+	}
+	else
+		return ERR_SYNTAX;
+
+	NEXT_TOKEN()
+	return command(data);
 }
