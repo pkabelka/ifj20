@@ -12,8 +12,6 @@
 
 #include "expression.h"
 
-static int copy_value(dll_node_t*, dll_node_t*);
-static dll_node_t* free_nodes(dll_node_t*, dll_node_t*, dll_node_t*);
 int optimize(dll_t*, data_t*);
 
 #endif
