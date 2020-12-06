@@ -30,8 +30,7 @@ func_calling             : const_val_identifier func_calling_n
 func_calling_n           : comma const_val_identifier func_calling_n
                          | ;
 const_val_identifier     : identifier
-                         | const_val ;
-const_val                : int_val
+                         | int_val
                          | float64_val
                          | string_val ;
 list_of_vars             : identifier list_of_vars_n list_of_vars_op ;
@@ -49,10 +48,9 @@ is_inter_func            : len
                          | inputf
                          | intputi
                          | inputs ;
-expression               : expr ;
 assignment               : end_of_assignment ;
 reassignment             : end_of_assignment ;
-end_of_assignment        : expression ;
+end_of_assignment        : expr ;
 cycle                    : cycle_list_of_assign condition end_of_cycle ;
 cycle_list_of_assign     : identifier cycle_list_of_assign_n assign assignment
                          | ;
@@ -63,7 +61,7 @@ cycle_list_of_reassign   : identifier cycle_list_of_reassign_n reassign reassign
 cycle_list_of_reassign_n : comma identifier cycle_list_of_reassign_n
                          | ;
 end_of_cycle             : cycle_list_of_reassign ;
-condition                : expression ;
+condition                : expr ;
 returned_vals            : next_returned_val ;
 next_returned_val        : comma next_returned_val
                          | ;
