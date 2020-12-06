@@ -15,6 +15,7 @@
 #include "stack.h"
 #include "str.h"
 #include "codegen.h"
+#include "optimizer.h"
 
 #define RET() return data->result;
 #define TKN data->token
@@ -112,11 +113,13 @@ int expression(data_t *data)
 			if (data->vdata != NULL)
 				data->vdata->type = data->current_type;
 
-			//TODO: generate internal code and optimize
-			r = generate_expression(data, list);
+			r = optimize(list, data);
+			if (r == 0)
+			{
+				r = generate_expression(data, list);
+			}
 		}
 	}
-
 	stack_dispose(&sym_stack, free_symbol);
 	dll_dispose(list, free_symbol);
 	return r;

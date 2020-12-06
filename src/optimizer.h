@@ -1,8 +1,19 @@
+/**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
+ * @brief Optimizer interface
+ * 
+ * @author Daniel Moudrý <xmoudr01 at stud.fit.vutbr.cz>
+ */
+
 #ifndef _OPTIMIZER_H
 #define _OPTIMIZER_H
 
 #include "expression.h"
 
+static int copy_value(dll_node_t*, dll_node_t*);
+static dll_node_t* free_nodes(dll_node_t*, dll_node_t*, dll_node_t*);
 int optimize(dll_t*, data_t*);
 
 #endif

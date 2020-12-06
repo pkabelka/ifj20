@@ -1,6 +1,18 @@
+/**
+ * Project name: Imperative language IFJ20 compiler implementation
+ * Název projektu: Implementace překladače imperativního jazyka IFJ20
+ * 
+ * @brief Optimizer implementation
+ * 
+ * @author Daniel Moudrý <xmoudr01 at stud.fit.vutbr.cz>
+ */
+
 #include "optimizer.h"
 #include "error.h"
 #include "dll.h"
+
+static int copy_value(dll_node_t *dst, dll_node_t *src);
+static dll_node_t* free_nodes(dll_node_t *operand_one, dll_node_t *operand_two, dll_node_t *current_node);
 
 int optimize(dll_t *list, data_t *data) {
     dll_node_t *operand_one;
@@ -29,6 +41,7 @@ int optimize(dll_t *list, data_t *data) {
         symbol = (symbol_t*)node->data;
         if (symbol->sym_type == SYM_OPERATOR) {
             operator = *((o_type*)(symbol->data));
+            if (operator == S_EQ || operator == S_NEQ || operator == S_GT || operator == S_GTE || operator == S_LT || operator == S_LTE) return 0;
             operand_two = node->prev;
             operand_one = operand_two->prev;
 
@@ -50,7 +63,11 @@ int optimize(dll_t *list, data_t *data) {
                                 break;
                             case S_DIV:
                                 // zero division check
-                                if (*((long*)((symbol_t*)operand_two->data)->data) == 0) return ERR_ZERO_DIVISION;
+                                if (*((long*)((symbol_t*)operand_two->data)->data) == 0)
+                                {
+                                    free(long_var_data);
+                                    return ERR_ZERO_DIVISION;
+                                }
                                 *long_var_data = *((long*)((symbol_t*)operand_one->data)->data) / *((long*)((symbol_t*)operand_two->data)->data);
                                 break;
                             default:
@@ -75,7 +92,11 @@ int optimize(dll_t *list, data_t *data) {
                                 break;
                             case S_DIV:
                                 // zero division check
-                                if (*((double*)((symbol_t*)operand_two->data)->data) == 0) return ERR_ZERO_DIVISION;
+                                if (*((double*)((symbol_t*)operand_two->data)->data) == 0)
+                                {
+                                    free(float_var_data);
+                                    return ERR_ZERO_DIVISION;
+                                }
                                 *float_var_data = *((double*)((symbol_t*)operand_one->data)->data) / *((double*)((symbol_t*)operand_two->data)->data);
                                 break;
                             default:
@@ -86,14 +107,8 @@ int optimize(dll_t *list, data_t *data) {
                         ((symbol_t*)operand_one->data)->data = float_var_data;
                     }
 
-                    //free nodes
-                    operand_one->next = node->next;
-                    if(node->next != NULL) node->next->prev = operand_one;
-                    free_symbol(((symbol_t*)operand_two->data));
-                    free_symbol(((symbol_t*)node->data));
-                    free(operand_two);
-                    free(node);
-                    node = operand_one->next;
+                    node = free_nodes(operand_one, operand_two, node);
+                    continue;
                 }
                 else if (type == SYM_STRING) {
                     if (operator == S_ADD) {
@@ -108,159 +123,151 @@ int optimize(dll_t *list, data_t *data) {
                         free(((symbol_t*)operand_one->data)->data);
                         ((symbol_t*)operand_one->data)->data = string_var_data;
 
-                        //free nodes
-                        operand_one->next = node->next;
-                        if(node->next != NULL) node->next->prev = operand_one;
-                        free_symbol(((symbol_t*)operand_two->data));
-                        free_symbol(((symbol_t*)node->data));
-                        free(operand_two);
-                        free(node);
-                        node = operand_one->next;
-                    }
-                    else {
-                        node = node->next;
+                        node = free_nodes(operand_one, operand_two, node);
+                        continue;
                     }
                 }
             }
-            // optimize multiplying variable by 0
+            // optimize variables in certain situations
             else {
                 if (((symbol_t*)operand_one->data)->sym_type == type && ((symbol_t*)operand_two->data)->sym_type == SYM_VAR) {
                     if (type == SYM_INT) {
                         if (*((long*)((symbol_t*)operand_one->data)->data) == 0) {
-                            if (operator == S_MUL) {
-                                long *long_var_data = malloc(sizeof(long));
-                                if (long_var_data == NULL) return ERR_INTERNAL;
-
-                                *long_var_data = 0;
-                                ((symbol_t*)operand_one->data)->sym_type = SYM_INT;
-                                free(((symbol_t*)operand_one->data)->data);
-                                ((symbol_t*)operand_one->data)->data = long_var_data;
-
-                                //free nodes
-                                operand_one->next = node->next;
-                                if(node->next != NULL) node->next->prev = operand_one;
-                                free_symbol(((symbol_t*)operand_two->data));
-                                free_symbol(((symbol_t*)node->data));
-                                free(operand_two);
-                                free(node);
-                                node = operand_one->next;
+                            if (operator == S_MUL) { // 0 * x = 0
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
-                            else {
-                                node = node->next;
+                            else if (operator == S_ADD) { // 0 + x = x
+                                if (copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
                         }
-                        else {
-                            node = node->next;
+                        else if (*((long*)((symbol_t*)operand_one->data)->data) == 1) {
+                            if (operator == S_MUL) { // 1 * x = x
+                                if (copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
+                            }
                         }
                     }
                     else if (type == SYM_FLOAT64) {
                         if (*((double*)((symbol_t*)operand_one->data)->data) == 0) {
-                            if (operator == S_MUL) {
-                                double *float_var_data = malloc(sizeof(double));
-                                if (float_var_data == NULL) return ERR_INTERNAL;
-
-                                *float_var_data = 0;
-                                ((symbol_t*)operand_one->data)->sym_type = SYM_FLOAT64;
-                                free(((symbol_t*)operand_one->data)->data);
-                                ((symbol_t*)operand_one->data)->data = float_var_data;
-
-                                //free nodes
-                                operand_one->next = node->next;
-                                if(node->next != NULL) node->next->prev = operand_one;
-                                free_symbol(((symbol_t*)operand_two->data));
-                                free_symbol(((symbol_t*)node->data));
-                                free(operand_two);
-                                free(node);
-                                node = operand_one->next;
+                            if (operator == S_MUL) { // 0 * x = 0
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
-                            else {
-                                node = node->next;
+                            else if (operator == S_ADD) { // 0 + x = x
+                                if (copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
                         }
-                        else {
-                            node = node->next;
+                        else if (*((double*)((symbol_t*)operand_one->data)->data) == 1) {
+                            if (operator == S_MUL) { // 1 * x = x
+                                if (copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
+                            }
                         }
-                    }
-                    else {
-                        node = node->next;
                     }
                 }
                 else if (((symbol_t*)operand_two->data)->sym_type == type && ((symbol_t*)operand_one->data)->sym_type == SYM_VAR) {
                     if (type == SYM_INT) {
                         if (*((long*)((symbol_t*)operand_two->data)->data) == 0) {
-                            if (operator == S_MUL) {
-                                long *long_var_data = malloc(sizeof(long));
-                                if (long_var_data == NULL) return ERR_INTERNAL;
-
-                                *long_var_data = 0;
-                                ((symbol_t*)operand_two->data)->sym_type = SYM_INT;
-                                free(((symbol_t*)operand_one->data)->data);
-                                ((symbol_t*)operand_two->data)->data = long_var_data;
-
-                                //free nodes
-                                operand_one->next = node->next;
-                                if(node->next != NULL) node->next->prev = operand_two;
-                                free_symbol(((symbol_t*)operand_two->data));
-                                free_symbol(((symbol_t*)node->data));
-                                free(operand_two);
-                                free(node);
-                                node = operand_one->next;
+                            if (operator == S_MUL) { // x * 0 = 0
+                                if (copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
+                            }
+                            else if (operator == S_ADD || operator == S_SUB) { // x + 0 = x or x - 0 = x
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
                             else if (operator == S_DIV){
                                 return ERR_ZERO_DIVISION;
                             }
-                            else {
-                                node = node->next;
-                            }
                         }
-                        else {
-                            node = node->next;
+                        else if (*((long*)((symbol_t*)operand_two->data)->data) == 1) {
+                            if (operator == S_MUL || operator == S_DIV) { // x * 1 = x or x / 1 = x
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
+                            }
                         }
                     }
                     else if (type == SYM_FLOAT64) {
                         if (*((double*)((symbol_t*)operand_two->data)->data) == 0) {
                             if (operator == S_MUL) {
-                                double *float_var_data = malloc(sizeof(double));
-                                if (float_var_data == NULL) return ERR_INTERNAL;
-
-                                *float_var_data = 0;
-                                ((symbol_t*)operand_two->data)->sym_type = SYM_FLOAT64;
-                                free(((symbol_t*)operand_one->data)->data);
-                                ((symbol_t*)operand_two->data)->data = float_var_data;
-
-                                //free nodes
-                                operand_one->next = node->next;
-                                if(node->next != NULL) node->next->prev = operand_two;
-                                free_symbol(((symbol_t*)operand_two->data));
-                                free_symbol(((symbol_t*)node->data));
-                                free(operand_two);
-                                free(node);
-                                node = operand_one->next;
+                                if(copy_value(operand_one, operand_two) == ERR_INTERNAL) return ERR_INTERNAL;
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
+                            }
+                            else if (operator == S_ADD || operator == S_SUB) {
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
                             else if (operator == S_DIV) {
                                 return ERR_ZERO_DIVISION;
                             }
-                            else {
-                                node = node->next;
+                        }
+                        else if (*((double*)((symbol_t*)operand_two->data)->data) == 1) {
+                            if (operator == S_MUL || operator == S_DIV) { // x * 1 = x or x / 1 = x
+                                node = free_nodes(operand_one, operand_two, node);
+                                continue;
                             }
                         }
-                        else {
-                            node = node->next;
-                        }
                     }
-                    else {
-                        node = node->next;
-                    }
-                }
-                else {
-                    node = node->next;
                 }
             }
         }
-        else {
-            node = node->next;
-        }
+
+        node = node->next;
     }
 
     return 0;
+}
+
+static int copy_value(dll_node_t *dst, dll_node_t *src) {
+    switch (((symbol_t*)src->data)->sym_type) {
+        case SYM_INT: ;
+            long *long_var_data = malloc(sizeof(long));
+            if (long_var_data == NULL) return ERR_INTERNAL;
+            *long_var_data = *((long*)((symbol_t*)src->data)->data);
+
+            ((symbol_t*)dst->data)->sym_type = SYM_INT;
+            //free(((symbol_t*)dst->data)->data);
+            ((symbol_t*)dst->data)->data = long_var_data;
+            break;
+
+        case SYM_FLOAT64: ;
+            double *float_var_data = malloc(sizeof(double));
+            if (float_var_data == NULL) return ERR_INTERNAL;
+            *float_var_data = *((double*)((symbol_t*)src->data)->data);
+
+            ((symbol_t*)dst->data)->sym_type = SYM_FLOAT64;
+            //free(((symbol_t*)dst->data)->data);
+            ((symbol_t*)dst->data)->data = float_var_data;
+            break;
+
+        case SYM_VAR: ;
+            ((symbol_t*)dst->data)->sym_type = SYM_VAR;
+            //free(((symbol_t*)dst->data)->data);
+            ((symbol_t*)dst->data)->data = ((symbol_t*)src->data)->data;
+            ((symbol_t*)src->data)->data = NULL;
+
+        default:
+            break;
+    }
+
+    return 0;
+}
+
+static dll_node_t* free_nodes(dll_node_t *operand_one, dll_node_t *operand_two, dll_node_t *current_node) {
+    operand_one->next = current_node->next;
+    if(current_node->next != NULL) current_node->next->prev = operand_one;
+    free_symbol(((symbol_t*)operand_two->data));
+    free_symbol(((symbol_t*)current_node->data));
+    free(operand_two);
+    free(current_node);
+    return operand_one->next;
 }

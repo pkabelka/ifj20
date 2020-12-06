@@ -3,9 +3,9 @@
 #include "../dll.h"
 #include "../expression.h"
 //#include <stdlib.h>
-//#include "src/dll.c"
-//#include "src/optimizer.c"
-//#include "src/str.c"
+//#include "../dll.c"
+//#include "../optimizer.c"
+//#include "../str.c"
 
 int main() {
     dll_t *list = dll_init();
