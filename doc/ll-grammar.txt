@@ -1,32 +1,69 @@
-%token begin EOF semi comma func id int float64 string chr ord len substr float2int int2float print inputf intputi inputs
+%token prolog EOF EOL semi comma assign reassign func identifier int float64 string int_val float64_val string_val if else for return curly_open curly_close par_open par_close comma underscore chr ord len substr float2int int2float print inputf intputi inputs
 %%
-parse            : begin func_def EOF ;
-func_def         : func_header scope func_def
-                 | ;
-func_header      : func id func_arg func_return_vals scope ;
-func_arg         : 
-                 | id next_func_arg ;
-next_func_arg    :
-                 | id;
-func_return_vals : var_type ;
-var_type         : int
-                 | float64
-                 | string ;
-expression       : expression_old_token ;
-expression_old_token : id end_of_expression
-                     : is_inter_func ;
-end_of_expression    : ;
-scope                :
-                     | ;
-// is_inter_func    : len
-//                  | ord
-//                  | chr
-//                  | substr
-//                  | float2int
-//                  | int2float
-//                  | print
-//                  | inputf
-//                  | intputi
-//                  | inputs ;
-is_inter_func    : ;
-assignment          : expression ;
+parse                    : prolog EOL func_def EOF ;
+func_def                 : func_header curly_open EOL _scope_ EOL func_def
+                         | ;
+func_header              : func identifier par_open func_args par_close func_return_vals ;
+func_args                : identifier var_type comma func_args
+                         | ;
+func_return_vals         : var_type
+                         | par_open var_type func_return_vals_par par_close
+                         | ;
+func_return_vals_par     : comma var_type func_return_vals_par
+                         | ;
+var_type                 : int
+                         | float64
+                         | string ;
+_scope_                    : identifier func_or_list_of_vars
+                         | is_inter_func par_open call_func
+                         | if statement
+                         | for cycle
+                         | return returned_vals ;
+statement                : condition curly_open EOL _scope_ else curly_open EOL _scope_ EOL ;
+func_or_list_of_vars     : comma list_of_vars
+                         | par_open call_func
+                         | assign assignment
+                         | reassign reassignment ;
+call_func                : func_calling ;
+func_calling             : const_val_identifier func_calling_n
+                         | ;
+func_calling_n           : comma const_val_identifier func_calling_n
+                         | ;
+const_val_identifier     : identifier
+                         | const_val ;
+const_val                : int_val
+                         | float64_val
+                         | string_val ;
+list_of_vars             : identifier list_of_vars_n list_of_vars_op ;
+list_of_vars_n           : comma identifier list_of_vars_n
+                         | ;
+list_of_vars_op          : assign assignment
+                         | reassign reassignment ;
+is_inter_func            : len
+                         | ord
+                         | chr
+                         | substr
+                         | float2int
+                         | int2float
+                         | print
+                         | inputf
+                         | intputi
+                         | inputs ;
+expression               : int ;
+assignment               : end_of_assignment ;
+reassignment             : end_of_assignment ;
+end_of_assignment        : expression ;
+cycle                    : cycle_list_of_assign condition end_of_cycle ;
+cycle_list_of_assign     : identifier cycle_list_of_assign_n assign assignment
+                         | ;
+cycle_list_of_assign_n   : comma identifier cycle_list_of_assign_n
+                         | ;
+cycle_list_of_reassign   : identifier cycle_list_of_reassign_n reassign reassignment
+                         | ;
+cycle_list_of_reassign_n : comma identifier cycle_list_of_reassign_n
+                         | ;
+end_of_cycle             : cycle_list_of_reassign ;
+condition                : expression ;
+returned_vals            : next_returned_val ;
+next_returned_val        : comma next_returned_val
+                         | ;
