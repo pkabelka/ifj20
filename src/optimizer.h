@@ -12,6 +12,6 @@
 
 #include "expression.h"
 
-int optimize(dll_t*, data_t*);
+int optimize(data_t *data, dll_t *list);
 
 #endif

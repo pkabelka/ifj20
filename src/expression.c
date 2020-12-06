@@ -113,7 +113,7 @@ int expression(data_t *data)
 			if (data->vdata != NULL)
 				data->vdata->type = data->current_type;
 
-			r = optimize(list, data);
+			r = optimize(data, list);
 			if (r == 0)
 			{
 				r = generate_expression(data, list);

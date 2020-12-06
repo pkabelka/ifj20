@@ -14,7 +14,7 @@
 static int copy_value(dll_node_t *dst, dll_node_t *src);
 static dll_node_t* free_nodes(dll_node_t *operand_one, dll_node_t *operand_two, dll_node_t *current_node);
 
-int optimize(dll_t *list, data_t *data) {
+int optimize(data_t *data, dll_t *list) {
     dll_node_t *operand_one;
     dll_node_t *operand_two;
     symbol_t *symbol;
