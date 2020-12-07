@@ -42,6 +42,8 @@ static int scope(data_t *data);
 static int assignment(data_t *data);
 static int reassignment(data_t *data);
 static int list_of_vars(data_t *data);
+static int list_of_vars_op(data_t *data);
+static int list_of_vars_n(data_t *data);
 static int statement(data_t *data);
 static int func_or_list_of_vars(data_t *data);
 static int cycle(data_t *data);
@@ -815,26 +817,47 @@ static int list_of_vars(data_t *data)
 {
 	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 	{
-		if (!add_to_assign_list(data, TKN)) 
+		if (!add_to_assign_list(data, TKN))
 			return ERR_INTERNAL;
 
+		APPLY_NEXT_RULE(list_of_vars_n)
+		APPLY_RULE(list_of_vars_op)
+		return 0;
+	}
+	return ERR_SYNTAX;
+}
+
+static int list_of_vars_op(data_t *data)
+{
+	if (TKN.type == TOKEN_ASSIGN && data->allow_assign)
+	{
+		APPLY_NEXT_RULE(assignment)
+		return 0;
+	}
+	else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
+	{
+		APPLY_NEXT_RULE(reassignment)
+		return 0;
+	}
+	return ERR_SYNTAX;
+}
+
+static int list_of_vars_n(data_t *data)
+{
+	if (TKN.type == TOKEN_COMMA)
+	{
 		NEXT_TOKEN()
-		if (TKN.type == TOKEN_ASSIGN && data->allow_assign)
+		if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 		{
-			APPLY_NEXT_RULE(assignment)
-			return 0;
-		}
-		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
-		{
-			APPLY_NEXT_RULE(reassignment)
-			return 0;
-		}
-		else if (TKN.type == TOKEN_COMMA)
-		{
-			APPLY_NEXT_RULE(list_of_vars)
+			if (!add_to_assign_list(data, TKN))
+				return ERR_INTERNAL;
+
+			APPLY_NEXT_RULE(list_of_vars_n)
 			return 0;
 		}
 	}
+	else if (TKN.type == TOKEN_ASSIGN || TKN.type == TOKEN_REASSIGN)
+		return 0;
 	return ERR_SYNTAX;
 }
 
