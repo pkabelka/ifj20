@@ -59,6 +59,7 @@ typedef struct
 	stack defvar_table;	   //symbol table for variables declarations (stack of BSTs)
 	stack calls;		   //stack of all function calls
 
+	bool print;
 	bool used_relations;
 	char current_type;
 	bool allow_assign;

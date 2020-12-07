@@ -35,6 +35,7 @@ static int func_return_vals(data_t *data);
 static int var_type(data_t *data);
 static int call_func(data_t *data);
 static int func_calling(data_t *data);
+static int func_calling_n(data_t *data);
 static int _scope_(data_t *data);
 static int scope(data_t *data);
 static int assignment(data_t *data);
@@ -54,6 +55,7 @@ static int check_ret_vals(data_t *data, char type, unsigned int n);
 static int check_func_calls(data_t *data);
 static int command(data_t *data);
 static int function(data_t *data);
+static int const_val_identifier(data_t *data);
 
 static char kw_to_char(keyword kw);
 static bool add_inter_func_to_table(data_t *data);
@@ -416,11 +418,6 @@ static int call_func(data_t *data)
 		return ERR_INTERNAL;
 	
 	call->line = TKN.line;
-	/*if (!str_add(&call->expected_return, 'r'))
-	{
-		free_func_call_data(call);
-		return ERR_INTERNAL;
-	}*/
 
 	char *name;
 	if (data->prev_token.type == TOKEN_KEYWORD)
@@ -449,90 +446,45 @@ static int call_func(data_t *data)
 
 	GEN(gen_create_frame);
 	data->arg_idx = 0;
+	data->print = strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0;
 	APPLY_NEXT_RULE(func_calling)
 	GEN(gen_func_call, call->func_name.str);
 	return 0;
 }
 
-static int func_calling(data_t *data)
+static int const_val_identifier(data_t *data)
 {
-	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+	if (TKN.type == TOKEN_IDENTIFIER)
 	{
-		if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
-			return ERR_SEMANTIC_UNDEF_REDEF;
-		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		if (data->print)
 		{
 			token *tmp_token = malloc(sizeof(token));
 			tmp_token->type = TKN.type;
-			string tmp_string;
-			str_init(&tmp_string);
-			tmp_token->attr.str = &tmp_string;
+			string *tmp_string = malloc(sizeof(string));
+			str_init(tmp_string);
+			tmp_token->attr.str = tmp_string;
 			str_copy(TKN.attr.str, tmp_token->attr.str);
 			dll_insert_first(data->arg_list, tmp_token);
-		}
-		else
-		{
-			var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
-			if (vd == NULL) //used undefined variable
-				return ERR_SEMANTIC_UNDEF_REDEF;
-			GEN(gen_func_call_arg_idx, data->arg_idx++, &TKN, vd->scope_idx);
-		}
-
-		NEXT_TOKEN()
-		if (TKN.type == TOKEN_COMMA || TKN.type == TOKEN_PAR_CLOSE) //variable as func parameter
-		{
-			var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
-			if (vd == NULL) //used undefined variable
-				return ERR_SEMANTIC_UNDEF_REDEF;
-			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, vd->type);
-			
-			if (TKN.type == TOKEN_PAR_CLOSE)
-			{
-				NEXT_TOKEN();
-				if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
-				{
-					dll_node_t *tmp = data->arg_list->first;
-					while (tmp != NULL)
-					{
-						GEN(gen_func_arg_push, (token*)tmp->data, vd->scope_idx);
-						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
-						{
-							str_free(((token*)tmp->data)->attr.str);
-						}
-						tmp = tmp->next;
-					}
-					token tmp_token;
-					tmp_token.type = TOKEN_INT;
-					tmp_token.attr.int_val = data->arg_list->size;
-					GEN(gen_func_arg_push, &tmp_token, vd->scope_idx);
-					dll_dispose(data->arg_list, free);
-					data->arg_list = dll_init();
-				}
-				return 0;
-			}
-
-			APPLY_NEXT_RULE(func_calling)
-			return 0;
 		}
 	}
 	else if (TKN.type == TOKEN_INT || TKN.type == TOKEN_STRING || TKN.type == TOKEN_FLOAT64)
 	{
-		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		if (data->print)
 		{
 			token *tmp_token = malloc(sizeof(token));
 			tmp_token->type = TKN.type;
-			string tmp_string;
-			str_init(&tmp_string);
-			tmp_token->attr.str = &tmp_string;
+			string *tmp_string = malloc(sizeof(string));
+			str_init(tmp_string);
+			tmp_token->attr.str = tmp_string;
 			switch (tmp_token->type)
 			{
 				case TOKEN_INT:
 					tmp_token->attr.int_val = TKN.attr.int_val;
-					str_free(&tmp_string);
+					str_free(tmp_string);
 					break;
 				case TOKEN_FLOAT64:
 					tmp_token->attr.float64_val = TKN.attr.float64_val;
-					str_free(&tmp_string);
+					str_free(tmp_string);
 					break;
 				case TOKEN_STRING:
 					str_copy(TKN.attr.str, tmp_token->attr.str);
@@ -542,56 +494,84 @@ static int func_calling(data_t *data)
 			}
 			dll_insert_first(data->arg_list, tmp_token);
 		}
-		else
-		{
-			GEN(gen_func_call_arg, data->arg_idx++, &TKN);
-		}
+	}
+	else if (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE)
+		return ERR_SEMANTIC_UNDEF_REDEF;
+	else 
+		return ERR_SYNTAX;
 
-		NEXT_TOKEN()
-		if (TKN.type == TOKEN_COMMA || TKN.type == TOKEN_PAR_CLOSE) //constants as func parameter
+	return 0;
+}
+
+static int func_calling_n(data_t *data)
+{
+	if (TKN.type == TOKEN_PAR_CLOSE || TKN.type == TOKEN_COMMA)
+	{
+		if (data->prev_token.type == TOKEN_IDENTIFIER) //var
+		{
+			var_data_t *vd = find_var(data, data->prev_token.attr.str->str, false);
+			if (vd == NULL) //used undefined variable
+				return ERR_SEMANTIC_UNDEF_REDEF;
+
+			if (!data->print)
+			{
+				str_add(&((func_call_data_t*)data->calls.top->data)->args_types, vd->type);
+				GEN(gen_func_call_arg_idx, data->arg_idx++, &data->prev_token, vd->scope_idx);
+			}
+		}
+		else if (!data->print) //int, string, float
 		{
 			str_add(&((func_call_data_t*)data->calls.top->data)->args_types, tkn_to_char(data->prev_token));
-			
-			if (TKN.type == TOKEN_PAR_CLOSE)
-			{
-				if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
-				{
-					dll_node_t *tmp = data->arg_list->first;
-					while (tmp != NULL)
-					{
-						if (((token*)tmp->data)->type == TOKEN_IDENTIFIER)
-						{
-							var_data_t *vd = find_var(data, ((token*)tmp->data)->attr.str->str, false);
-							GEN(gen_func_arg_push, (token*)tmp->data, vd->scope_idx);
-						}
-						else
-						{
-							GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
-						}
-						if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
-						{
-							str_free(((token*)tmp->data)->attr.str);
-						}
-						tmp = tmp->next;
-					}
-					token tmp_token;
-					tmp_token.type = TOKEN_INT;
-					tmp_token.attr.int_val = data->arg_list->size;
-					GEN(gen_func_arg_push, &tmp_token, 0);
-					dll_dispose(data->arg_list, free);
-					data->arg_list = dll_init();
-				}
-				NEXT_TOKEN();
-				return 0;
-			}
+			GEN(gen_func_call_arg, data->arg_idx++, &data->prev_token);
+		}
 
-			APPLY_NEXT_RULE(func_calling)
+		if (TKN.type == TOKEN_PAR_CLOSE)
+		{
+			NEXT_TOKEN()
+			if (data->print)
+			{
+				dll_node_t *tmp = data->arg_list->first;
+				while (tmp != NULL)
+				{
+					//token *td = (token*)tmp->data;
+					if (((token*)tmp->data)->type == TOKEN_IDENTIFIER)
+					{
+						var_data_t *vd = find_var(data, ((token*)tmp->data)->attr.str->str, false);
+						GEN(gen_func_arg_push, (token*)tmp->data, vd->scope_idx);
+					}
+					else
+					{
+						GEN(gen_func_arg_push, (token*)tmp->data, data->scope_idx);
+					}
+
+					if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
+					{
+						str_free(((token*)tmp->data)->attr.str);
+					}
+					tmp = tmp->next;
+				}
+
+				token tmp_token;
+				tmp_token.type = TOKEN_INT;
+				tmp_token.attr.int_val = data->arg_list->size;
+				GEN(gen_func_arg_push, &tmp_token, 0);
+				dll_clear(data->arg_list, free);
+			}
 			return 0;
 		}
+		
+		APPLY_NEXT_RULE(const_val_identifier)
+		APPLY_NEXT_RULE(func_calling_n)
+		return 0;
 	}
-	else if (TKN.type == TOKEN_PAR_CLOSE && data->prev_token.type != TOKEN_COMMA)
+	return ERR_SYNTAX;
+}
+
+static int func_calling(data_t *data)
+{
+	if (TKN.type == TOKEN_PAR_CLOSE) //no args
 	{
-		if (strcmp(((func_call_data_t*)data->calls.top->data)->func_name.str, "print") == 0)
+		if (data->print)
 		{
 			token tmp_token;
 			tmp_token.type = TOKEN_INT;
@@ -601,7 +581,12 @@ static int func_calling(data_t *data)
 		NEXT_TOKEN()
 		return 0;
 	}
-	return ERR_SYNTAX;
+	else
+	{
+		APPLY_RULE(const_val_identifier)
+		APPLY_NEXT_RULE(func_calling_n)
+		return 0;
+	}
 }
 
 static int _scope_(data_t *data)
