@@ -32,6 +32,7 @@
 static int func_header(data_t *data);
 static int func_args(data_t *data);
 static int func_return_vals(data_t *data);
+static int func_return_vals_par(data_t *data);
 static int var_type(data_t *data);
 static int call_func(data_t *data);
 static int func_calling(data_t *data);
@@ -286,38 +287,8 @@ static int func_header(data_t *data)
 		APPLY_RULE(func_args)
 	}
 	
-	NEXT_TOKEN()
-	if (TKN.type == TOKEN_CURLY_OPEN) //start of body - empty return list
-	{
-		data->fdata->used_return = true; // no need for using return
-		return 0;
-	}
-	else if (TKN.type == TOKEN_PAR_OPEN) //return vals
-	{
-		NEXT_TOKEN()
-		if (TKN.type == TOKEN_PAR_CLOSE) //empty return list
-			data->fdata->used_return = true; // no need for using return
-		else
-		{
-			APPLY_RULE(func_return_vals)
-		}
-		NEXT_TOKEN()
-		if (TKN.type == TOKEN_CURLY_OPEN) //start of body
-			return 0;
-	}
-	else if (TKN.type == TOKEN_KEYWORD)
-	{
-		if (TKN.attr.kw == KW_INT || TKN.attr.kw == KW_STRING || TKN.attr.kw == KW_FLOAT64) //one returned value without ()
-		{
-			if (!str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw)))
-				return ERR_INTERNAL;
-			GEN(gen_func_def_retval, data->fdata->ret_val_types.len-1, TKN.attr.kw);
-			NEXT_TOKEN()
-			if (TKN.type == TOKEN_CURLY_OPEN) //starts of body
-				return 0;
-		}
-	}
-	return ERR_SYNTAX;
+	APPLY_NEXT_RULE(func_return_vals)
+	return 0;
 }
 
 static int func_args(data_t *data)
@@ -375,15 +346,42 @@ static int func_args(data_t *data)
 
 static int func_return_vals(data_t *data)
 {
+	if (TKN.type == TOKEN_PAR_OPEN)
+	{
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_PAR_CLOSE) //empty return list
+			data->fdata->used_return = true; //no need for using return
+		else //1+ return vals
+		{
+			APPLY_RULE(func_return_vals_par)
+		}
+		EXPECT_NEXT_TOKEN(TOKEN_CURLY_OPEN) //start of body
+	}
+	else if (TKN.type == TOKEN_CURLY_OPEN) //start of body - empty return list
+		data->fdata->used_return = true; //no need for using return
+	else //one return value without ()
+	{
+		APPLY_RULE(var_type)
+		if (!str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw)))
+			return ERR_INTERNAL;
+		GEN(gen_func_def_retval, data->fdata->ret_val_types.len - 1, TKN.attr.kw);
+		EXPECT_NEXT_TOKEN(TOKEN_CURLY_OPEN) //start of body
+	}
+	return 0;
+}
+
+static int func_return_vals_par(data_t *data)
+{
 	APPLY_RULE(var_type)
-	str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw));
-	GEN(gen_func_def_retval, data->fdata->ret_val_types.len-1, TKN.attr.kw);
+	if (!str_add(&data->fdata->ret_val_types, kw_to_char(TKN.attr.kw)))
+		return ERR_INTERNAL;
+	GEN(gen_func_def_retval, data->fdata->ret_val_types.len - 1, TKN.attr.kw);
 	NEXT_TOKEN()
 	if (TKN.type == TOKEN_PAR_CLOSE)
 		return 0;
 	else if (TKN.type == TOKEN_COMMA)
 	{
-		APPLY_NEXT_RULE(func_return_vals)
+		APPLY_NEXT_RULE(func_return_vals_par)
 		return 0;
 	}
 	return ERR_SYNTAX;
