@@ -235,7 +235,6 @@ static int copy_value(dll_node_t *dst, dll_node_t *src) {
             *long_var_data = *((long*)((symbol_t*)src->data)->data);
 
             ((symbol_t*)dst->data)->sym_type = SYM_INT;
-            //free(((symbol_t*)dst->data)->data);
             ((symbol_t*)dst->data)->data = long_var_data;
             break;
 
@@ -245,13 +244,12 @@ static int copy_value(dll_node_t *dst, dll_node_t *src) {
             *float_var_data = *((double*)((symbol_t*)src->data)->data);
 
             ((symbol_t*)dst->data)->sym_type = SYM_FLOAT64;
-            //free(((symbol_t*)dst->data)->data);
             ((symbol_t*)dst->data)->data = float_var_data;
             break;
 
         case SYM_VAR: ;
             ((symbol_t*)dst->data)->sym_type = SYM_VAR;
-            //free(((symbol_t*)dst->data)->data);
+            free(((symbol_t*)dst->data)->data);
             ((symbol_t*)dst->data)->data = ((symbol_t*)src->data)->data;
             ((symbol_t*)src->data)->data = NULL;
 
