@@ -482,12 +482,14 @@ static int const_val_identifier(data_t *data)
 			switch (tmp_token->type)
 			{
 				case TOKEN_INT:
-					tmp_token->attr.int_val = TKN.attr.int_val;
 					str_free(tmp_string);
+					free(tmp_string);
+					tmp_token->attr.int_val = TKN.attr.int_val;
 					break;
 				case TOKEN_FLOAT64:
-					tmp_token->attr.float64_val = TKN.attr.float64_val;
 					str_free(tmp_string);
+					free(tmp_string);
+					tmp_token->attr.float64_val = TKN.attr.float64_val;
 					break;
 				case TOKEN_STRING:
 					str_copy(TKN.attr.str, tmp_token->attr.str);
@@ -550,6 +552,7 @@ static int func_calling_n(data_t *data)
 					if (((token*)tmp->data)->type == TOKEN_STRING || ((token*)tmp->data)->type == TOKEN_IDENTIFIER)
 					{
 						str_free(((token*)tmp->data)->attr.str);
+						free(((token*)tmp->data)->attr.str);
 					}
 					tmp = tmp->next;
 				}
@@ -1197,11 +1200,6 @@ static int new_scope(data_t *data)
 		free(defvar_local_scope);
 		return ERR_INTERNAL;
 	}
-
-	int *zero = malloc(sizeof(int));
-	if (zero == NULL)
-		return ERR_INTERNAL;
-	*zero = 0;
 
 	data->scope_idx++;
 	return 0;
