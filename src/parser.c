@@ -944,6 +944,12 @@ static int cycle(data_t *data)
 		data->result = end_of_cycle(data, curr_idx);
 		CHECK_RESULT()
 	}
+	else
+	{
+		string *tmp_push = malloc(sizeof(string));
+		str_init(tmp_push);
+		stack_push(&data->for_assign, tmp_push);
+	}
 
 	EXPECT_NEXT_TOKEN(TOKEN_EOL)
 	APPLY_NEXT_RULE(scope)
