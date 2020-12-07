@@ -47,7 +47,11 @@ static int list_of_vars_n(data_t *data);
 static int statement(data_t *data);
 static int func_or_list_of_vars(data_t *data);
 static int cycle(data_t *data);
-static int end_of_cycle(data_t *data);
+static int cycle_list_of_assign(data_t *data, unsigned long idx);
+static int cycle_list_of_assign_n(data_t *data, unsigned long idx);
+static int cycle_list_of_reassign(data_t *data, unsigned long idx);
+static int cycle_list_of_reassign_n(data_t *data, unsigned long idx);
+static int end_of_cycle(data_t *data, unsigned long idx);
 static int condition(data_t *data);
 static int returned_vals(data_t *data);
 static int next_returned_val(data_t *data, unsigned int n);
@@ -85,7 +89,6 @@ bool init_data(data_t *data)
 	data->assign_for = false;
 	data->assign_for_swap_output = false;
 	data->scope_idx = 0;
-	data->allow_reassign = true;
 	data->allow_relations = false;
 
 	stack_init(&data->for_assign);
@@ -829,12 +832,12 @@ static int list_of_vars(data_t *data)
 
 static int list_of_vars_op(data_t *data)
 {
-	if (TKN.type == TOKEN_ASSIGN && data->allow_assign)
+	if (TKN.type == TOKEN_ASSIGN)
 	{
 		APPLY_NEXT_RULE(assignment)
 		return 0;
 	}
-	else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
+	else if (TKN.type == TOKEN_REASSIGN)
 	{
 		APPLY_NEXT_RULE(reassignment)
 		return 0;
@@ -903,12 +906,12 @@ static int func_or_list_of_vars(data_t *data)
 			APPLY_NEXT_RULE(list_of_vars)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_ASSIGN && data->allow_assign)
+		else if (TKN.type == TOKEN_ASSIGN)
 		{
 			APPLY_NEXT_RULE(assignment)
 			return 0;
 		}
-		else if (TKN.type == TOKEN_REASSIGN && data->allow_reassign)
+		else if (TKN.type == TOKEN_REASSIGN)
 		{
 			APPLY_NEXT_RULE(reassignment)
 			return 0;
@@ -920,87 +923,121 @@ static int func_or_list_of_vars(data_t *data)
 static int cycle(data_t *data)
 {
 	APPLY_RULE(new_scope)
+
 	unsigned long curr_idx = data->label_idx;
 	data->label_idx++;
-	if (TKN.type == TOKEN_SEMICOLON) //empty
-	{
-		GEN(gen_for_start, data->fdata->name.str, curr_idx);
-		APPLY_NEXT_RULE(condition)
-		GEN(gen_for_cond, data->fdata->name.str, curr_idx);
-		if (TKN.type == TOKEN_SEMICOLON)
-		{
-			data->assign_for = true;
-			data->assign_for_swap_output = true;
-			APPLY_NEXT_RULE(end_of_cycle)
-			APPLY_RULE(close_scope)
 
-			if (data->for_assign.top != NULL)
-			{
-				str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-				str_free((string*)data->for_assign.top->data);
-				stack_pop(&data->for_assign, free);
-			}
-			GEN(gen_endfor, data->fdata->name.str, curr_idx);
-			return 0;
-		}
+	if (TKN.type != TOKEN_SEMICOLON) //i := 0
+	{
+		data->result = cycle_list_of_assign(data, curr_idx);
+		CHECK_RESULT()
 	}
-	else if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+
+	//condition i < 10
+	GEN(gen_for_start, data->fdata->name.str, curr_idx);
+	APPLY_NEXT_RULE(condition)
+	GEN(gen_for_cond, data->fdata->name.str, curr_idx);
+
+	NEXT_TOKEN()
+	if (TKN.type != TOKEN_CURLY_OPEN) //i = i + 1
 	{
-		data->allow_assign = true;
-		data->allow_reassign = false;
-		APPLY_RULE(list_of_vars)
-		data->allow_reassign = true;
-		GEN(gen_for_start, data->fdata->name.str, curr_idx);
+		data->result = end_of_cycle(data, curr_idx);
+		CHECK_RESULT()
+	}
 
-		if (TKN.type == TOKEN_SEMICOLON)
-		{
-			APPLY_NEXT_RULE(condition)
-			GEN(gen_for_cond, data->fdata->name.str, curr_idx);
-			if (TKN.type == TOKEN_SEMICOLON)
-			{
-				data->assign_for = true;
-				data->assign_for_swap_output = true;
-				APPLY_NEXT_RULE(end_of_cycle)
-				APPLY_RULE(close_scope)
+	EXPECT_NEXT_TOKEN(TOKEN_EOL)
+	APPLY_NEXT_RULE(scope)
+	EXPECT_NEXT_TOKEN(TOKEN_EOL)
 
-				if (data->for_assign.top != NULL)
-				{
-					str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str);
-					str_free((string*)data->for_assign.top->data);
-					stack_pop(&data->for_assign, free);
-				}
-				GEN(gen_endfor, data->fdata->name.str, curr_idx);
-				return 0;
-			}
-		}
+	APPLY_RULE(close_scope)
+
+	if (data->for_assign.top != NULL)
+	{
+		if (!str_add_const(&ifjcode20_output, ((string*)data->for_assign.top->data)->str))
+			return ERR_INTERNAL;
+		str_free((string*)data->for_assign.top->data);
+		stack_pop(&data->for_assign, free);
+	}
+
+	GEN(gen_endfor, data->fdata->name.str, curr_idx);
+	return 0;
+}
+
+static int cycle_list_of_assign(data_t *data, unsigned long idx)
+{
+	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+	{
+		NEXT_TOKEN()
+		data->result = cycle_list_of_assign_n(data, idx);
+		CHECK_RESULT()
+
+		EXPECT_TOKEN(TOKEN_ASSIGN)
+		APPLY_NEXT_RULE(assignment)
+		EXPECT_TOKEN(TOKEN_SEMICOLON)
+		return 0;
 	}
 	return ERR_SYNTAX;
 }
 
-static int end_of_cycle(data_t *data)
+static int cycle_list_of_assign_n(data_t *data, unsigned long idx)
 {
-	if (TKN.type == TOKEN_CURLY_OPEN) //empty
+	if (!add_to_assign_list(data, data->prev_token))
+		return ERR_INTERNAL;
+
+	if (TKN.type == TOKEN_COMMA)
 	{
-		EXPECT_NEXT_TOKEN(TOKEN_EOL)
-		data->assign_for = false;
-		data->assign_for_swap_output = false;
-		APPLY_NEXT_RULE(scope)
-		EXPECT_NEXT_TOKEN(TOKEN_EOL)
-		return 0;
-	}
-	else if (TKN.type == TOKEN_IDENTIFIER)
-	{
-		data->allow_assign = false;
-		APPLY_RULE(list_of_vars)
-		if (TKN.type == TOKEN_CURLY_OPEN)
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
 		{
-			EXPECT_NEXT_TOKEN(TOKEN_EOL)
-			APPLY_NEXT_RULE(scope)
-			EXPECT_NEXT_TOKEN(TOKEN_EOL)
-			return 0;
+			NEXT_TOKEN()
+			return cycle_list_of_assign_n(data, idx);
 		}
 	}
+	else if (TKN.type == TOKEN_ASSIGN)
+		return 0;
 	return ERR_SYNTAX;
+}
+
+static int cycle_list_of_reassign(data_t *data, unsigned long idx)
+{
+	if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+	{
+		NEXT_TOKEN()
+		data->result = cycle_list_of_reassign_n(data, idx);
+		CHECK_RESULT()
+
+		EXPECT_TOKEN(TOKEN_REASSIGN)
+		data->assign_for = true;
+		data->assign_for_swap_output = true;
+		APPLY_NEXT_RULE(reassignment)
+		EXPECT_TOKEN(TOKEN_CURLY_OPEN)
+		return 0;
+	}
+	return ERR_SYNTAX;
+}
+
+static int cycle_list_of_reassign_n(data_t *data, unsigned long idx)
+{
+	if (!add_to_assign_list(data, data->prev_token))
+		return ERR_INTERNAL;
+
+	if (TKN.type == TOKEN_COMMA)
+	{
+		NEXT_TOKEN()
+		if (TKN.type == TOKEN_IDENTIFIER || (TKN.type == TOKEN_KEYWORD && TKN.attr.kw == KW_UNDERSCORE))
+		{
+			NEXT_TOKEN()
+			return cycle_list_of_reassign_n(data, idx);
+		}
+	}
+	else if (TKN.type == TOKEN_REASSIGN)
+		return 0;
+	return ERR_SYNTAX;
+}
+
+static int end_of_cycle(data_t *data, unsigned long idx)
+{
+	return cycle_list_of_reassign(data, idx);
 }
 
 static int condition(data_t *data)
@@ -1154,8 +1191,6 @@ static int new_scope(data_t *data)
 		free(defvar_local_scope);
 		return ERR_INTERNAL;
 	}
-
-	data->allow_assign = true;
 
 	int *zero = malloc(sizeof(int));
 	if (zero == NULL)

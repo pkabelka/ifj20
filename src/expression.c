@@ -80,7 +80,7 @@ int expression(data_t *data)
 	if (list == NULL)
 		return ERR_INTERNAL;
 
-	if (data->vdata == NULL)
+	if (data->vdata == NULL || str_cmp_const(&data->vdata->name, "_") == 0)
 		data->current_type = 't';
 	else
 		data->current_type = data->vdata->type;
