@@ -28,7 +28,7 @@ bool gen_output_header()
 "MOVE GF@%%tmp2 int@0\n"\
 "DEFVAR GF@%%void\n"\
 "MOVE GF@%%void int@0\n"\
-"JUMP $$main\n");
+"JUMP $main\n");
     GEN_BOOL(gen_builtin_functions);
     return true;
     }
@@ -61,7 +61,7 @@ bool gen_func_begin(const char *id)
 {
     if (strcmp(id, "main") == 0)
     {
-        CODE("\nLABEL $$main\n"\
+        CODE("\nLABEL $main\n"\
             "CREATEFRAME\n"\
             "PUSHFRAME\n");
         return true;
