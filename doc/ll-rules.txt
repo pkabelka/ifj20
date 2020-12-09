@@ -1,0 +1,66 @@
+(1)	parse → prolog EOL function EOF
+(2)	function → func_header { EOL command EOL } EOL function
+(3)	function → ε
+(4)	func_header → func identifier ( func_args ) func_return_vals
+(5)	func_args → identifier var_type , func_args
+(6)	func_args → ε
+(7)	func_return_vals → var_type
+(8)	func_return_vals → ( var_type func_return_vals_par )
+(9)	func_return_vals → ε
+(10)	func_return_vals_par → , var_type func_return_vals_par
+(11)	func_return_vals_par → ε
+(12)	var_type → int
+(13)	var_type → float64
+(14)	var_type → string
+(15)	command → identifier func_or_list_of_vars EOL command
+(16)	command → is_inter_func ( call_func ) EOL command
+(17)	command → if statement EOL command
+(18)	command → for cycle EOL command
+(19)	command → return returned_vals EOL command
+(20)	command → }
+(21)	statement → condition { EOL command else { EOL command
+(22)	func_or_list_of_vars → , list_of_vars
+(23)	func_or_list_of_vars → ( call_func )
+(24)	func_or_list_of_vars → := assignment
+(25)	func_or_list_of_vars → = reassignment
+(26)	call_func → func_calling
+(27)	func_calling → const_val_identifier func_calling_n
+(28)	func_calling → ε
+(29)	func_calling_n → , const_val_identifier func_calling_n
+(30)	func_calling_n → ε
+(31)	const_val_identifier → identifier
+(32)	const_val_identifier → int_val
+(33)	const_val_identifier → float64_val
+(34)	const_val_identifier → string_val
+(35)	list_of_vars → identifier list_of_vars_n list_of_vars_op
+(36)	list_of_vars_n → , identifier list_of_vars_n
+(37)	list_of_vars_n → ε
+(38)	list_of_vars_op → := assignment
+(39)	list_of_vars_op → = reassignment
+(40)	is_inter_func → len
+(41)	is_inter_func → ord
+(42)	is_inter_func → chr
+(43)	is_inter_func → substr
+(44)	is_inter_func → float2int
+(45)	is_inter_func → int2float
+(46)	is_inter_func → print
+(47)	is_inter_func → inputf
+(48)	is_inter_func → intputi
+(49)	is_inter_func → inputs
+(50)	assignment → end_of_assignment
+(51)	reassignment → end_of_assignment
+(52)	end_of_assignment → expr
+(53)	cycle → cycle_list_of_assign ; condition ; end_of_cycle { EOL command
+(54)	cycle_list_of_assign → identifier cycle_list_of_assign_n := assignment
+(55)	cycle_list_of_assign → ε
+(56)	cycle_list_of_assign_n → , identifier cycle_list_of_assign_n
+(57)	cycle_list_of_assign_n → ε
+(58)	cycle_list_of_reassign → identifier cycle_list_of_reassign_n = reassignment
+(59)	cycle_list_of_reassign → ε
+(60)	cycle_list_of_reassign_n → , identifier cycle_list_of_reassign_n
+(61)	cycle_list_of_reassign_n → ε
+(62)	end_of_cycle → cycle_list_of_reassign
+(63)	condition → expr
+(64)	returned_vals → next_returned_val
+(65)	next_returned_val → , next_returned_val
+(66)	next_returned_val → ε

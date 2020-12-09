@@ -15,14 +15,14 @@ var_type                 : int
                          | float64
                          | string ;
 command                  : identifier func_or_list_of_vars EOL command
-                         | is_inter_func par_open call_func EOL command
+                         | is_inter_func par_open call_func par_close EOL command
                          | if statement EOL command
                          | for cycle EOL command
                          | return returned_vals EOL command
                          | curly_close ;
 statement                : condition curly_open EOL command else curly_open EOL command ;
 func_or_list_of_vars     : comma list_of_vars
-                         | par_open call_func
+                         | par_open call_func par_close
                          | assign assignment
                          | reassign reassignment ;
 call_func                : func_calling ;
