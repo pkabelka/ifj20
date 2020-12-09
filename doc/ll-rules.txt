@@ -1,5 +1,5 @@
 (1)	parse → prolog EOL function EOF
-(2)	function → func_header { EOL command EOL } EOL function
+(2)	function → func_header { EOL command EOL function
 (3)	function → ε
 (4)	func_header → func identifier ( func_args ) func_return_vals
 (5)	func_args → identifier var_type , func_args
@@ -50,7 +50,7 @@
 (50)	assignment → end_of_assignment
 (51)	reassignment → end_of_assignment
 (52)	end_of_assignment → expr
-(53)	cycle → cycle_list_of_assign ; condition ; end_of_cycle { EOL command
+(53)	cycle → cycle_list_of_assign ; condition ; end_of_cycle { EOL command EOL
 (54)	cycle_list_of_assign → identifier cycle_list_of_assign_n := assignment
 (55)	cycle_list_of_assign → ε
 (56)	cycle_list_of_assign_n → , identifier cycle_list_of_assign_n
