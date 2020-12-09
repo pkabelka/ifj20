@@ -1,7 +1,7 @@
-%token prolog EOF EOL semi comma assign reassign func identifier expr int float64 string int_val float64_val string_val if else for return curly_open curly_close par_open par_close comma underscore chr ord len substr float2int int2float print inputf intputi inputs
+%token prolog EOF EOL semi assign reassign func identifier expr int float64 string int_val float64_val string_val if else for return curly_open curly_close par_open par_close comma chr ord len substr float2int int2float print inputf intputi inputs
 %%
 parse                    : prolog EOL function EOF ;
-function                 : func_header curly_open EOL command EOL function
+function                 : func_header curly_open EOL command EOL curly_close EOL function
                          | ;
 func_header              : func identifier par_open func_args par_close func_return_vals ;
 func_args                : identifier var_type comma func_args
@@ -14,12 +14,13 @@ func_return_vals_par     : comma var_type func_return_vals_par
 var_type                 : int
                          | float64
                          | string ;
-command                  : identifier func_or_list_of_vars
-                         | is_inter_func par_open call_func
-                         | if statement
-                         | for cycle
-                         | return returned_vals ;
-statement                : condition curly_open EOL command else curly_open EOL command EOL ;
+command                  : identifier func_or_list_of_vars EOL command
+                         | is_inter_func par_open call_func EOL command
+                         | if statement EOL command
+                         | for cycle EOL command
+                         | return returned_vals EOL command
+                         | curly_close ;
+statement                : condition curly_open EOL command else curly_open EOL command ;
 func_or_list_of_vars     : comma list_of_vars
                          | par_open call_func
                          | assign assignment
@@ -51,7 +52,7 @@ is_inter_func            : len
 assignment               : end_of_assignment ;
 reassignment             : end_of_assignment ;
 end_of_assignment        : expr ;
-cycle                    : cycle_list_of_assign condition end_of_cycle ;
+cycle                    : cycle_list_of_assign semi condition semi end_of_cycle curly_open EOL command ;
 cycle_list_of_assign     : identifier cycle_list_of_assign_n assign assignment
                          | ;
 cycle_list_of_assign_n   : comma identifier cycle_list_of_assign_n
