@@ -35,9 +35,6 @@ bool gen_output_header()
 
 bool gen_output_eof()
 {
-    // CODE("LABEL $$runerr\n",
-    //     "WRITE string@Runtime\\032error!\\010Encountered\\032a\\032function\\032without\\032a\\032return\\032statement\\010\n",
-    //     "EXIT int@6\n");
     CODE("LABEL $$EOF\n");
     return true;
 }
@@ -94,7 +91,6 @@ bool gen_func_def_retval(unsigned long idx, keyword kw)
 
 bool gen_func_set_retval(unsigned long idx)
 {
-    // CODE("MOVE LF@%%retval"); CODE_NUM(idx); CODE(" GF@%%res\n");
     CODE("POPS LF@%%retval"); CODE_NUM(idx); CODE("\n");
     return true;
 }
