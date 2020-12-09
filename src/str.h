@@ -4,6 +4,10 @@
  * 
  * @brief Dynamic string interface
  *
+ * Implementation of this library was inspired by str.c found in
+ * jednoduchy_interpret.zip on the IFJ course website:
+ * https://www.fit.vutbr.cz/study/courses/IFJ/public/project/
+ * 
  * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
 
@@ -16,7 +20,6 @@
 #include <stdarg.h>
 
 #define STR_ALLOC_CONST 8 // Constant of 8 bytes to prevent reallocating with each character
-// #define str_add_var(...) str_add_var(__VA_ARGS__, NULL)
 
 /**
  * @struct Dynamic string

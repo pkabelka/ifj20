@@ -3,6 +3,10 @@
  * Název projektu: Implementace překladače imperativního jazyka IFJ20
  * 
  * @brief Dynamic string implementation
+ * 
+ * Implementation of this library was inspired by str.c found in
+ * jednoduchy_interpret.zip on the IFJ course website:
+ * https://www.fit.vutbr.cz/study/courses/IFJ/public/project/
  *
  * @author Petr Kabelka <xkabel09 at stud.fit.vutbr.cz>
  */
