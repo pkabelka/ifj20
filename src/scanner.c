@@ -150,7 +150,7 @@ int get_next_token(token *tok)
     tok->type = TOKEN_NONE;
     int c;
     int c_prev = 0;
-    char hex_escape_str[2];
+    char hex_escape_str[3];
     unsigned int int_base = 10;
     tok->line = line;
 
@@ -716,6 +716,7 @@ int get_next_token(token *tok)
                 {
                     state = SCANNER_STRING;
                     hex_escape_str[1] = c;
+                    hex_escape_str[2] = '\0';
                     char *end;
                     int value = (int) strtol(hex_escape_str, &end, 16);
                     if (*end != '\0') { return cleanup(&str, ERR_INTERNAL); }
