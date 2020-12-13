@@ -26,7 +26,6 @@ typedef enum
 	SYM_INT = 2,
 	SYM_STRING = 3,
 	SYM_FLOAT64 = 4,
-	// only for f*cking operator precedence parsing
 	SYM_STOP = 5, //$
 	SYM_OPEN = 6, //(
 	SYM_CLOSE = 7 //)
